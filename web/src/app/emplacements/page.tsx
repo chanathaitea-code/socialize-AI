@@ -73,7 +73,10 @@ export default async function EmplacementsPage({
         <h1 className="font-extrabold text-[#12211c]">
           Social<span className="text-[#0f6b53]">Flow</span> AI
         </h1>
-        <span className="text-sm text-gray-500">Emplacements · Chana Thaï</span>
+        <nav className="flex gap-3 text-sm">
+          <span className="font-semibold text-[#0f6b53]">Emplacements</span>
+          <a href="/semaine" className="text-gray-500 hover:text-[#0f6b53]">Story de la semaine</a>
+        </nav>
         <form action={signOut} className="ml-auto">
           <button className="text-sm text-gray-500 hover:text-red-600">Déconnexion</button>
         </form>
