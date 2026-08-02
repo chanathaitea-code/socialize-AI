@@ -316,7 +316,7 @@ svg text{font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
   <button class="nav-item" data-screen="prospects"><span class="ico">◎</span>Prospects</button>
   <div class="nav-label">Configuration</div>
   <button class="nav-item" data-screen="parametres"><span class="ico">⚙</span>Paramètres</button>
-  <div class="sb-foot">Prototype v4 · août 2026<br>Données de démonstration</div>
+  <div class="sb-foot">Prototype v5 · août 2026<br>Données de démonstration</div>
 </aside>
 
 <div class="sb-backdrop" id="sb-backdrop"></div>
@@ -326,7 +326,8 @@ svg text{font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
   <div class="topbar">
     <button class="menu-btn" id="menu-btn">☰</button>
     <h1 id="screen-title">Tableau de bord</h1>
-    <div class="mode-chip"><span class="pulse"></span>Mode semi-automatique</div>
+    <div class="mode-chip" id="mode-chip"><span class="pulse"></span>Mode semi-automatique</div>
+    <button class="btn ghost" id="pause-btn" title="Tout arrêter" style="font-size:14px;padding:6px 11px">⏸</button>
     <div class="right">
       <span class="muted">samedi 1 août 2026</span>
       <div class="avatar">P</div>
@@ -342,9 +343,10 @@ svg text{font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
         sont prêtes et programmées. <b>34 °C prévus cet après-midi</b> : les Bubble Tea et Mister Freeze ont été mis en avant
         à la place des plats chauds. Une photo du service de ce soir à HEC serait utile pour la Story de dimanche.
       </p>
-      <div style="display:flex;gap:8px;margin-top:12px">
+      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
         <button class="btn primary" data-goto="validation">Voir les contenus du jour</button>
         <button class="btn ghost" data-goto="calendrier">Ouvrir le calendrier</button>
+        <button class="btn danger" onclick="journeeAnnulee()">🚨 Journée annulée</button>
       </div>
     </div>
     <div class="row cols-4">
@@ -359,8 +361,8 @@ svg text{font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
         <table class="data">
           <thead><tr><th></th><th>Contenu</th><th>Format</th><th>Réseaux</th><th>Quand</th><th>Statut</th></tr></thead>
           <tbody>
-            <tr><td><div class="thumb g1">🧋</div></td><td><b>Bubble Tea fraîcheur</b><br><span class="muted">Mis en avant : forte chaleur</span></td><td><span class="pill story">Story</span></td><td><span class="net">IG</span> <span class="net">FB</span></td><td>Auj. 11h30</td><td><span class="check">✓ Programmé</span></td></tr>
-            <tr><td><div class="thumb g2">📍</div></td><td><b>Ce soir : HEC campus</b><br><span class="muted">Lieu + horaires du service</span></td><td><span class="pill post">Post</span></td><td><span class="net">IG</span> <span class="net">FB</span> <span class="net">GBP</span></td><td>Auj. 17h00</td><td><span class="check">✓ Programmé</span></td></tr>
+            <tr><td><div class="thumb g1">🧋</div></td><td><b>Bubble Tea fraîcheur</b><br><span class="muted">Mis en avant : forte chaleur</span></td><td><span class="pill story">Story</span></td><td><span class="net">IG</span> <span class="net">FB</span></td><td>Auj. 11h30</td><td id="g1"><span class="check">✓ Part dans 2 h</span><br><a href="#" onclick="grace('g1');return false" style="font-size:10.5px;color:var(--critical)">Annuler</a></td></tr>
+            <tr><td><div class="thumb g2">📍</div></td><td><b>Ce soir : HEC campus</b><br><span class="muted">Lieu + horaires du service</span></td><td><span class="pill post">Post</span></td><td><span class="net">IG</span> <span class="net">FB</span> <span class="net">GBP</span></td><td>Auj. 17h00</td><td id="g2"><span class="check">✓ Part dans 7 h</span><br><a href="#" onclick="grace('g2');return false" style="font-size:10.5px;color:var(--critical)">Annuler</a></td></tr>
             <tr><td><div class="thumb g3">🍗</div></td><td><b>Reel Crousty Thaï en cuisson</b><br><span class="muted">Montage auto 15 s, sous-titres</span></td><td><span class="pill reel">Reel</span></td><td><span class="net">IG</span> <span class="net">TikTok</span></td><td>Dim. 12h00</td><td><span style="color:#8a5d00;font-weight:700">⏳ À valider</span></td></tr>
             <tr><td><div class="thumb g6">🗓</div></td><td><b>Planning de la semaine</b><br><span class="muted">Emplacements lun→dim</span></td><td><span class="pill story">Story + Post</span></td><td><span class="net">IG</span> <span class="net">FB</span></td><td>Dim. 18h00</td><td><span style="color:#8a5d00;font-weight:700">⏳ À valider</span></td></tr>
           </tbody>
@@ -368,6 +370,7 @@ svg text{font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
       </div>
       <div class="card">
         <h3>Alertes et suggestions</h3>
+        <div class="alert-line"><span class="ic">🟢</span><div><b>Santé des comptes : 4/4 connectés</b> · dernière publication il y a 2 h · aucune panne silencieuse<div class="muted">En cas de déconnexion : alerte immédiate par notification, email et SMS</div></div></div>
         <div class="alert-line"><span class="ic">📸</span><div><b>Photo demandée :</b> service du soir à HEC pour la Story de dimanche.<div class="muted">L'équipe a été notifiée sur mobile</div></div></div>
         <div class="alert-line"><span class="ic">🌡</span><div><b>Météo 34 °C :</b> Bubble Tea et Mister Freeze mis en avant automatiquement.</div></div>
         <div class="alert-line"><span class="ic">⚠️</span><div><b>1 message sensible</b> en attente de votre validation (allergie).<div class="muted">Aucune réponse automatique envoyée</div></div></div>
@@ -593,6 +596,16 @@ svg text{font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
       <button class="btn primary demo">+ Ajouter des médias</button>
       <button class="btn ghost" data-filter="tous" style="background:#12211c;color:#fff">Tous</button><button class="btn ghost" data-filter="crousty">Crousty Thaï</button><button class="btn ghost" data-filter="bubbletea">Bubble Tea</button><button class="btn ghost" data-filter="foodtruck">Food Truck</button><button class="btn ghost" data-filter="traiteur">Traiteur</button><button class="btn ghost" data-filter="equipe">Équipe</button>
     </div>
+    <div class="card" style="margin-bottom:14px;border-color:#f3d9a4;background:#fffbf2">
+      <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+        <div style="flex:1;min-width:220px">
+          <b>Matière première : plus que 4 photos fraîches</b>
+          <div style="background:#eee9dc;border-radius:6px;height:8px;margin-top:8px;overflow:hidden"><div style="background:var(--serious);width:27%;height:100%"></div></div>
+          <div class="muted" style="margin-top:6px">En dessous de 3, la qualité des contenus baissera. 6 contenus intemporels en réserve (recettes, histoire de la cheffe).</div>
+        </div>
+        <button class="btn primary" onclick="toast('Demande envoyée : 2 plans au prochain service (photo du dressage + file d\'attente) ✓')">Demander 2 photos à l'équipe</button>
+      </div>
+    </div>
     <div class="card" style="margin-bottom:14px;border-color:#c8e2da;background:#f7fbf9">
       <h3>🎬 Demandes du jour · mode équipe terrain <small>· service de ce soir à HEC</small></h3>
       <p class="small" style="margin-bottom:10px">4 plans de 5 secondes à filmer au téléphone. Le Reel se monte automatiquement cette nuit et sera proposé à la validation demain matin.</p>
@@ -648,6 +661,19 @@ svg text{font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
         <div class="checks"><span class="chk warn">⚠ Nouvel emplacement « festival de Chevreuse » à confirmer</span><span class="chk">✓ Horaires conformes</span><span class="chk">✓ Charte respectée</span></div>
         <div class="acts"><button class="btn primary" data-approve="v3">✓ Valider et programmer</button><button class="btn ghost" data-edit="v3">Modifier</button><button class="btn danger" data-reject="v3">Refuser</button><span class="state-ok">✓ Programmé pour dimanche 18h00</span><span class="state-no">✕ Refusé — un contenu de remplacement sera proposé</span></div>
       </div>
+    </div>
+
+    <div class="card" style="margin-top:18px">
+      <h3>Journal des publications <small>· tout ce qui est parti, où et quand · procédure d'urgence en un clic</small></h3>
+      <table class="data">
+        <thead><tr><th>Contenu</th><th>Réseaux</th><th>Parti le</th><th>Mode</th><th></th></tr></thead>
+        <tbody>
+          <tr id="j1"><td><b>Story « On est à Montigny »</b></td><td><span class="net">IG</span> <span class="net">FB</span></td><td>Auj. 11h30</td><td><span class="chk">Auto</span></td><td><button class="btn danger" style="padding:4px 10px;font-size:10.5px" onclick="urgence('j1','Story « On est à Montigny »')">Corriger / Supprimer</button></td></tr>
+          <tr id="j2"><td><b>Post « Offre du week-end »</b></td><td><span class="net">IG</span> <span class="net">FB</span> <span class="net">GBP</span></td><td>Hier 11h00</td><td><span class="chk warn">Validé par vous</span></td><td><button class="btn danger" style="padding:4px 10px;font-size:10.5px" onclick="urgence('j2','Post « Offre du week-end »')">Corriger / Supprimer</button></td></tr>
+          <tr id="j3"><td><b>Réponse à l'avis 5★ de Google</b></td><td><span class="net">GBP</span></td><td>Hier 9h12</td><td><span class="chk">Auto</span></td><td><button class="btn danger" style="padding:4px 10px;font-size:10.5px" onclick="urgence('j3','Réponse à l\'avis Google')">Corriger / Supprimer</button></td></tr>
+        </tbody>
+      </table>
+      <p class="muted" style="margin-top:8px">Si un contrôle a posteriori détecte une anomalie (prix modifié après publication, produit passé en rupture), vous êtes alerté immédiatement.</p>
     </div>
   </section>
 
@@ -860,9 +886,37 @@ svg text{font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
         <div class="setrow"><div class="t"><b>Instagram — @chanathai</b><span>Publication + commentaires + messages</span></div><span class="check">✓ Connecté</span></div>
         <div class="setrow"><div class="t"><b>Facebook — Chana Thaï</b><span>Publication + Messenger</span></div><span class="check">✓ Connecté</span></div>
         <div class="setrow"><div class="t"><b>Google Business Profile</b><span>Posts + avis (2 établissements)</span></div><span class="check">✓ Connecté</span></div>
-        <div class="setrow"><div class="t"><b>TikTok — @chanathai</b><span>Publication de Reels</span></div><span class="check">✓ Connecté</span></div>
+        <div class="setrow" id="tk-row"><div class="t"><b>TikTok — @chanathai</b><span style="color:var(--critical)">⚠ Jeton expiré depuis 20 min · alerte envoyée (push + email + SMS)</span></div><button class="btn primary" onclick="document.getElementById('tk-row').innerHTML='<div class=t><b>TikTok — @chanathai</b><span>Publication de Reels</span></div><span class=check>✓ Reconnecté</span>';toast('TikTok reconnecté — publications reprises ✓')">Reconnecter</button></div>
         <div class="setrow"><div class="t"><b>LinkedIn</b><span>Communication traiteur entreprises</span></div><button class="btn ghost demo">Connecter</button></div>
         <div class="setrow"><div class="t"><b>Threads</b><span></span></div><button class="btn ghost demo">Connecter</button></div>
+      </div>
+    </div>
+    <div class="row cols-2">
+      <div class="card">
+        <h3>Voix de la marque <small>· ce que l'IA a appris de vos corrections</small></h3>
+        <div id="voice-rules"></div>
+        <div style="margin-top:12px">
+          <div class="muted" style="font-weight:700;text-transform:uppercase;font-size:10px;letter-spacing:.5px;margin-bottom:7px">Mots et sujets interdits</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap" id="banned-row"></div>
+        </div>
+        <button class="btn ghost" style="margin-top:14px" onclick="calibrage(0)">↻ Refaire la session de calibrage</button>
+      </div>
+      <div class="card">
+        <h3>Réponses automatiques par sujet <small>· au moindre doute, l'IA transmet sans répondre</small></h3>
+        <div class="setrow"><div class="t"><b>Emplacements et horaires</b><span>« Vous êtes où aujourd'hui ? » — source : calendrier</span></div><div class="switch on"></div></div>
+        <div class="setrow"><div class="t"><b>Carte, prix et plats végétariens</b><span>Source : carte du profil de marque</span></div><div class="switch on"></div></div>
+        <div class="setrow"><div class="t"><b>Privatisations et devis (1ʳᵉ réponse)</b><span>Puis fiche prospect créée et transmise</span></div><div class="switch on"></div></div>
+        <div class="setrow"><div class="t"><b>Avis positifs (4-5★)</b><span>Remerciement personnalisé</span></div><div class="switch on"></div></div>
+        <div class="setrow"><div class="t"><b>Réclamations, allergies, incidents</b><span>Jamais de réponse auto — transmis systématiquement (non désactivable)</span></div><div class="switch" style="opacity:.45;pointer-events:none"></div></div>
+        <button class="btn ghost" style="margin-top:12px" onclick="histIA()">Voir l'historique des réponses envoyées par l'IA</button>
+      </div>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <h3>Sécurité et réversibilité</h3>
+      <p class="small" style="line-height:1.6;max-width:760px">Vos comptes sont connectés par les <b>connexions officielles des plateformes (OAuth)</b> : votre mot de passe n'est jamais saisi ni stocké chez nous, et vous pouvez révoquer l'accès à tout moment depuis Instagram, Facebook ou Google. Vos données vous appartiennent : si vous partez, vous emportez tout.</p>
+      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+        <button class="btn ghost" onclick="toast('Export complet préparé : photos, textes, calendriers, statistiques (démo)')">Exporter toutes mes données</button>
+        <button class="btn ghost" onclick="toast('Liste des accès à révoquer affichée (démo)')">Gérer / révoquer les accès</button>
       </div>
     </div>
   </section>
@@ -1128,6 +1182,76 @@ document.querySelectorAll(".lead").forEach(l=>l.addEventListener("click",()=>{
     "<p class='small' style='line-height:1.6'>Historique : détecté automatiquement dans la boîte de réception · fiche créée par l'IA · relance automatique programmée.</p>"+
     "<div style='display:flex;gap:8px;margin-top:14px;flex-wrap:wrap'><button class='btn primary' onclick='closeModal();toast(\"Message de relance préparé (démo)\")'>Relancer maintenant</button><button class='btn ghost' onclick='openDevis()'>Préparer un devis</button><button class='btn ghost' onclick='closeModal();toast(\"Étape mise à jour (démo)\")'>Changer d'étape</button></div>");
 }));
+
+/* ---------- Fiabilité & confiance ---------- */
+let paused=false;
+document.getElementById("pause-btn").addEventListener("click",()=>{
+  paused=!paused;
+  const chip=document.getElementById("mode-chip"),btn=document.getElementById("pause-btn");
+  if(paused){
+    chip.innerHTML="⏸ Tout est en pause";chip.style.background="#fbecec";chip.style.color="var(--critical)";chip.style.borderColor="#f0c5c5";
+    btn.textContent="▶";
+    toast("PAUSE GLOBALE : plus aucune publication ni réponse automatique ne partira");
+  }else{
+    chip.innerHTML='<span class="pulse"></span>Mode semi-automatique';chip.style.background="";chip.style.color="";chip.style.borderColor="";
+    btn.textContent="⏸";
+    toast("Reprise : les automatisations sont réactivées ✓");
+  }
+});
+function grace(id){
+  document.getElementById(id).innerHTML='<span style="color:var(--critical);font-weight:700;font-size:12px">✕ Annulée</span><br><span class="muted" style="font-size:10px">retirée de la file</span>';
+  toast("Publication annulée avant l'envoi ✓");
+}
+function urgence(id,titre){
+  openModal("Procédure d'urgence · "+titre,
+    "<p class='small' style='line-height:1.6'>Cette publication est déjà partie. Que voulez-vous faire ?</p>"+
+    "<div style='display:flex;flex-direction:column;gap:8px;margin-top:12px'>"+
+    "<button class='btn danger' onclick='closeModal();document.getElementById(\""+id+"\").style.opacity=.4;toast(\"Supprimée sur tous les réseaux en quelques secondes ✓\")'>Supprimer partout, immédiatement</button>"+
+    "<button class='btn ghost' onclick='closeModal();toast(\"Texte corrigé et republié sur tous les réseaux ✓\")'>Corriger le texte et mettre à jour</button>"+
+    "<button class='btn ghost' onclick='closeModal()'>Annuler</button></div>"+
+    "<p class='muted' style='margin-top:10px'>L'action est appliquée sur chaque réseau où la publication est partie, et tracée dans le journal.</p>");
+}
+function journeeAnnulee(){
+  openModal("🚨 Journée annulée",
+    "<p class='small' style='line-height:1.65'>Panne, météo, marché annulé... En confirmant, l'application va :</p>"+
+    "<ul style='font-size:12.5px;line-height:1.8;margin:10px 0 0 18px'>"+
+    "<li>retirer les 2 publications et Stories prévues aujourd'hui ;</li>"+
+    "<li>publier un message d'excuse dans le ton Chana Thaï (« Petit imprévu, on se retrouve demain à Gif ! ») ;</li>"+
+    "<li>mettre à jour la fiche Google (fermé exceptionnellement) ;</li>"+
+    "<li>répondre aux « vous êtes où ? » avec la bonne information.</li></ul>"+
+    "<div style='display:flex;gap:8px;margin-top:14px'><button class='btn danger' onclick='closeModal();toast(\"Journée annulée : publications retirées, excuses publiées, Google à jour ✓\")'>Confirmer l'annulation du jour</button><button class='btn ghost' onclick='closeModal()'>Retour</button></div>");
+}
+let VRULES=["Jamais de tutoiement avec les clients","Toujours mentionner le lieu du jour dans les posts","Pas d'emoji piment sur les plats doux","Dire « la cheffe », jamais « le chef »"];
+let BANNED=["pas cher","malbouffe","fast-food","exotique"];
+function renderVoice(){
+  const vr=document.getElementById("voice-rules");if(!vr)return;
+  vr.innerHTML=VRULES.map((r,i)=>`<div class="alert-line"><span class="ic">✓</span><div style="flex:1">Compris : <b>${r}</b><div class="muted">appris de vos corrections</div></div><button class="btn ghost" style="padding:2px 8px;font-size:10px" onclick="VRULES.splice(${i},1);renderVoice();toast('Règle supprimée')">✕</button></div>`).join("");
+  document.getElementById("banned-row").innerHTML=BANNED.map((b,i)=>`<span class="chip-net on" onclick="BANNED.splice(${i},1);renderVoice();toast('« ${b} » retiré des interdits')">✕ ${b}</span>`).join("")+
+  `<span class="chip-net" onclick="addBanned()">+ Ajouter</span>`;
+}
+function addBanned(){
+  openModal("Ajouter un mot ou sujet interdit","<input id='ban-in' placeholder='Ex : surgelé'><div style='display:flex;gap:8px;margin-top:10px'><button class='btn primary' onclick='const v=document.getElementById(\"ban-in\").value.trim();if(v){BANNED.push(v);renderVoice();}closeModal();'>Ajouter</button><button class='btn ghost' onclick='closeModal()'>Annuler</button></div>");
+}
+const CALIB=[
+  "« Le Crousty Thaï qui croustille, fait minute devant vous. Ce midi à Montigny ! 🍗 »",
+  "« PROMO EXCEPTIONNELLE !!! -50% À NE PAS RATER !!! 🔥🔥🔥 »",
+  "« Recette née à Bangkok, mijotée par notre cheffe. Le Panang coco combava vous attend ce soir à HEC. »"
+];
+function calibrage(i){
+  if(i>=CALIB.length){closeModal();toast("Calibrage terminé : la voix de la marque est mise à jour ✓");return;}
+  openModal("Calibrage de la voix · exemple "+(i+1)+"/"+CALIB.length,
+    "<div class='reply-box' style='margin-top:0'>"+CALIB[i]+"</div>"+
+    "<div style='display:flex;gap:8px;margin-top:12px'><button class='btn primary' onclick='calibrage("+(i+1)+")'>👍 C'est mon ton</button><button class='btn danger' onclick='calibrage("+(i+1)+")'>👎 Pas du tout</button></div>");
+}
+function histIA(){
+  openModal("Historique des réponses envoyées par l'IA",
+    "<div class='alert-line'><span class='ic'>💬</span><div><b>Sophie R.</b> · « Vous êtes où ? » → réponse emplacement · auj. 9h14</div></div>"+
+    "<div class='alert-line'><span class='ic'>💬</span><div><b>Tom D.</b> · « Plats végétariens ? » → carte veggie · hier 15h02</div></div>"+
+    "<div class='alert-line'><span class='ic'>⭐</span><div><b>Avis Google 5★</b> → remerciement · hier 9h12</div></div>"+
+    "<div class='alert-line'><span class='ic'>⏸</span><div><b>Marc L.</b> · message ambigu sur une commande → <b>non répondu, transmis</b> (règle du doute) · mardi</div></div>"+
+    "<p class='muted' style='margin-top:8px'>Chaque réponse est tracée. La règle du doute n'est pas désactivable.</p>");
+}
+renderVoice();
 
 /* ---------- Plateformes & rythme de publication ---------- */
 const PLATS=[["Instagram",true],["Facebook",true],["TikTok",true],["Google Business",true],["Threads",false],["LinkedIn",false],["Pinterest",false],["YouTube Shorts",false],["X",false]];

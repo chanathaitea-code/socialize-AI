@@ -165,6 +165,30 @@ Chaque début de mois, un rapport prêt à envoyer au client final : résultats 
 
 Réglages complémentaires : validation obligatoire par type de contenu, mode brouillon, mode absence ou vacances (l'application continue de publier les contenus déjà validés et met en pause le reste). Lancement recommandé en mode semi-automatique. Les règles de basculement en validation humaine sont configurables par marque et s'appliquent en plus du pipeline de garde-fous, jamais à sa place.
 
+### 4.1 Fiabilité et confiance (exigences produit)
+
+Huit mécanismes répondent aux angoisses réelles de l'utilisateur d'un outil qui publie à sa place. Ils sont des exigences produit, pas des options.
+
+**Pause globale.** Un bouton pause visible sur tous les écrans arrête instantanément toute publication et toute réponse automatique. La reprise est explicite. C'est le « bouton rouge » qui rend l'automatisation acceptable.
+
+**Délai de grâce.** Chaque publication automatique est annoncée avant de partir (« part dans 2 h ») et annulable d'un geste depuis la notification ou le tableau de bord. Configurable de 0 à 24 h par marque.
+
+**Journal et procédure d'urgence.** Journal complet de tout ce qui est parti (contenu, réseaux, heure, mode). En cas d'erreur constatée après coup : correction ou suppression sur tous les réseaux en un clic, et notification immédiate au client si un contrôle a posteriori détecte une anomalie.
+
+**Bouton « journée annulée ».** Panne du camion, pluie, marché annulé : un geste retire les publications du jour, publie un message d'excuse dans le ton de la marque, corrige la fiche Google et fait répondre aux « vous êtes où ? » avec la bonne information. Cas réel des commerces mobiles, ignoré par tous les concurrents.
+
+**Surveillance des connexions.** Détection immédiate d'un compte déconnecté ou d'un token expiré : alerte par notification, email et SMS, reconnexion guidée en un clic, indicateur de santé des comptes en permanence sur le tableau de bord. Aucune panne silencieuse : si l'application ne peut pas travailler, le client le sait dans l'heure.
+
+**Jauge de matière première.** Compteur de photos fraîches avec seuil d'alerte (« plus que 4 photos, la qualité va baisser »), demandes de photos concrètes et minimales (2 plans au prochain service), et réserve de contenus intemporels (recettes, histoire de la cheffe, savoir-faire) pour les semaines sans matière.
+
+**Voix de la marque, apprentissage visible.** Chaque correction du client devient une règle affichée (« compris : jamais de tutoiement ») qu'il peut consulter et supprimer. Liste de mots et sujets interdits contrôlée par le client. Session de calibrage à l'inscription : une dizaine d'exemples de légendes à approuver ou rejeter pour caler le ton avant la première publication.
+
+**Réponses automatiques sous contrôle.** Activation sujet par sujet (emplacements, horaires, carte, végétarien, devis), historique consultable de toutes les réponses envoyées par l'IA, et règle absolue non désactivable : au moindre doute de compréhension, l'IA ne répond pas et transmet à l'humain.
+
+**Confiance à l'entrée et réversibilité.** Page sécurité explicite : connexion officielle OAuth (jamais de mot de passe stocké), révocable à tout moment depuis les plateformes, et engagement de réversibilité écrit : en cas de résiliation, export complet des photos, textes, calendriers et statistiques en un clic.
+
+Priorité d'implémentation : pause globale, délai de grâce, alerte de déconnexion, journée annulée et jauge de photos dès la phase 1 ; journal et urgence, voix de marque et calibrage en phase 2 ; réponses par sujet avec la boîte de réception en phase 3 ; l'export de réversibilité au plus tard avec les premiers clients payants (phase 4).
+
 ---
 
 ## 5. Contraintes externes : APIs des réseaux sociaux (état vérifié juillet 2026)
@@ -277,6 +301,8 @@ Un échec à n'importe quelle étape bloque la publication et crée une tâche v
 | local_signals | Météo, vacances scolaires, jours fériés, événements locaux par zone |
 | seo_snapshots | Relevés de positionnement Google, santé GBP et visibilité moteurs IA par mot-clé |
 | monthly_reports | Rapports mensuels générés, envoi et consultation par le client |
+| voice_rules | Règles de voix apprises des corrections, mots et sujets interdits, calibrage initial |
+| account_health | État de santé des connexions par compte, incidents, alertes envoyées |
 
 ---
 
