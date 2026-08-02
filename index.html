@@ -1,0 +1,1206 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SocialFlow AI — Prototype</title>
+<style>
+:root{
+  --surface-1:#fcfcfb; --page:#f4f4f1;
+  --ink-1:#0b0b0b; --ink-2:#52514e; --ink-3:#898781;
+  --grid:#e1e0d9; --baseline:#c3c2b7; --ring:rgba(11,11,11,.10);
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100;
+  --good:#0ca30c; --goodtext:#006300; --warning:#fab219; --serious:#ec835a; --critical:#d03b3b;
+  --accent:#0f6b53; --accent-soft:#e5f2ee;
+  --sb-bg:#12211c; --sb-ink:#c9d8d2; --sb-active:#1d3830;
+  --seq100:#cde2fb; --seq200:#9ec5f4; --seq300:#6da7ec; --seq400:#3987e5; --seq500:#256abf; --seq600:#184f95; --seq700:#0d366b;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--page);color:var(--ink-1);font-size:14px;color-scheme:light}
+.app{display:flex;min-height:100vh}
+/* ---------- Sidebar ---------- */
+.sidebar{width:232px;background:var(--sb-bg);color:var(--sb-ink);padding:18px 12px;display:flex;flex-direction:column;gap:4px;flex-shrink:0;position:sticky;top:0;height:100vh;overflow-y:auto}
+.logo{font-weight:800;font-size:17px;color:#fff;padding:6px 10px 2px;letter-spacing:.2px}
+.logo span{color:#7fd4b8}
+.logo-sub{font-size:10.5px;color:#6f8a81;padding:0 10px 12px}
+.brandpick{background:#0c1814;border:1px solid #23423a;border-radius:10px;padding:9px 10px;margin:0 4px 14px;display:flex;align-items:center;gap:9px;cursor:pointer}
+.brandpick .dot{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#f3c04b,#d94f2b);display:flex;align-items:center;justify-content:center;font-size:15px}
+.brandpick b{color:#fff;font-size:12.5px;display:block}
+.brandpick small{color:#6f8a81;font-size:10.5px}
+.brandpick .chev{margin-left:auto;color:#6f8a81}
+.nav-label{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:#5c746c;padding:10px 10px 4px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:13px;color:var(--sb-ink);border:none;background:none;width:100%;text-align:left}
+.nav-item:hover{background:#182f28}
+.nav-item.active{background:var(--sb-active);color:#fff;font-weight:600}
+.nav-item .ico{width:18px;text-align:center;font-size:14px}
+.nav-item .badge{margin-left:auto;background:#d94f2b;color:#fff;font-size:10px;font-weight:700;border-radius:9px;padding:1px 7px}
+.nav-item .badge.blue{background:#2a78d6}
+.sb-foot{margin-top:auto;padding:12px 10px;border-top:1px solid #23423a;font-size:11px;color:#6f8a81}
+/* ---------- Main ---------- */
+.main{flex:1;min-width:0}
+.topbar{display:flex;align-items:center;gap:14px;padding:14px 26px;background:var(--surface-1);border-bottom:1px solid var(--grid);position:sticky;top:0;z-index:20}
+.topbar h1{font-size:17px;font-weight:700}
+.mode-chip{display:flex;align-items:center;gap:7px;background:var(--accent-soft);color:var(--accent);font-weight:600;font-size:12px;border-radius:16px;padding:5px 12px;border:1px solid #c8e2da}
+.mode-chip .pulse{width:7px;height:7px;border-radius:50%;background:var(--accent)}
+.topbar .right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.avatar{width:30px;height:30px;border-radius:50%;background:#0f6b53;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px}
+.screen{display:none;padding:24px 26px 48px;max-width:1180px}
+.screen.active{display:block}
+/* ---------- Cards & commons ---------- */
+.card{background:var(--surface-1);border:1px solid var(--grid);border-radius:12px;padding:18px;box-shadow:0 1px 2px rgba(11,11,11,.03)}
+.card h3{font-size:13.5px;font-weight:700;margin-bottom:12px}
+.card h3 small{font-weight:400;color:var(--ink-3);font-size:11.5px}
+.row{display:grid;gap:14px;margin-bottom:14px}
+.cols-2{grid-template-columns:1fr 1fr}.cols-3{grid-template-columns:1fr 1fr 1fr}.cols-4{grid-template-columns:repeat(4,1fr)}
+.cols-32{grid-template-columns:2fr 1fr}
+@media(max-width:980px){.cols-2,.cols-3,.cols-4,.cols-32{grid-template-columns:1fr}}
+.kpi{background:var(--surface-1);border:1px solid var(--grid);border-radius:12px;padding:14px 16px}
+.kpi .lbl{font-size:11.5px;color:var(--ink-2);margin-bottom:4px}
+.kpi .val{font-size:24px;font-weight:800;letter-spacing:-.3px}
+.kpi .delta{font-size:11.5px;font-weight:600;margin-top:3px}
+.up{color:var(--goodtext)}.down{color:var(--critical)}.neutral{color:var(--ink-3)}
+.pill{display:inline-block;font-size:10.5px;font-weight:700;border-radius:10px;padding:2px 9px}
+.pill.story{background:#fdeee6;color:#b5490f}.pill.reel{background:#e7f0fb;color:#1c5cab}.pill.post{background:#e6f6ef;color:#0a6b47}.pill.carrousel{background:#f3edfc;color:#5b3aa7}.pill.gbp{background:#fef4dd;color:#8a5d00}
+.net{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;color:var(--ink-2);background:#f1f0ec;border-radius:9px;padding:2px 8px;font-weight:600}
+.btn{border:none;border-radius:8px;font-size:12px;font-weight:600;padding:7px 13px;cursor:pointer;font-family:inherit}
+.btn.primary{background:var(--accent);color:#fff}
+.btn.ghost{background:#f1f0ec;color:var(--ink-1)}
+.btn.danger{background:#fbecec;color:var(--critical)}
+.btn:hover{filter:brightness(.96)}
+.tabs{display:inline-flex;background:#eceae4;border-radius:9px;padding:3px;gap:2px;margin-bottom:16px}
+.tabs button{border:none;background:none;font-family:inherit;font-size:12.5px;font-weight:600;color:var(--ink-2);padding:6px 16px;border-radius:7px;cursor:pointer}
+.tabs button.on{background:var(--surface-1);color:var(--ink-1);box-shadow:0 1px 2px rgba(11,11,11,.08)}
+table.data{width:100%;border-collapse:collapse;font-size:12.5px}
+table.data th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--ink-3);font-weight:600;padding:7px 10px;border-bottom:1px solid var(--grid)}
+table.data td{padding:9px 10px;border-bottom:1px solid #efeee9;vertical-align:middle}
+table.data td.num{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+table.data th.num{text-align:right}
+table.data tr:hover td{background:#f7f6f2}
+.check{color:var(--goodtext);font-weight:700}
+.thumb{width:38px;height:38px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0}
+.g1{background:linear-gradient(135deg,#ffe8c9,#ffb37a)}.g2{background:linear-gradient(135deg,#d9f2e5,#8fd8b4)}.g3{background:linear-gradient(135deg,#fde3e3,#f4a2a2)}.g4{background:linear-gradient(135deg,#e3ecfd,#a8c6f2)}.g5{background:linear-gradient(135deg,#f6e7fb,#d9a8ef)}.g6{background:linear-gradient(135deg,#fff3cd,#f7d774)}
+.alert-line{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-bottom:1px solid #efeee9;font-size:12.5px}
+.alert-line:last-child{border-bottom:none}
+.alert-line .ic{font-size:14px;width:20px;text-align:center}
+.muted{color:var(--ink-3);font-size:11.5px}
+.small{font-size:12px;color:var(--ink-2)}
+/* Validation cards */
+.vcard{display:flex;gap:14px;padding:14px;border:1px solid var(--grid);border-radius:12px;background:var(--surface-1);margin-bottom:12px;align-items:flex-start}
+.vcard .preview{width:120px;border-radius:10px;overflow:hidden;flex-shrink:0}
+.vcard .preview .img{height:120px;display:flex;align-items:center;justify-content:center;font-size:42px}
+.vcard .preview.tall .img{height:170px}
+.vcard .body{flex:1;min-width:0}
+.vcard .checks{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.chk{font-size:10.5px;background:#eef7ef;color:var(--goodtext);border-radius:8px;padding:2px 8px;font-weight:600}
+.chk.warn{background:#fdf3e0;color:#8a5d00}
+.vcard .acts{display:flex;gap:8px;margin-top:10px}
+.state-ok{background:#eef7ef;color:var(--goodtext);font-weight:700;border-radius:8px;padding:6px 12px;font-size:12px;display:none}
+/* Inbox */
+.inbox-wrap{display:grid;grid-template-columns:340px 1fr;gap:14px}
+@media(max-width:980px){.inbox-wrap{grid-template-columns:1fr}}
+.msg{display:flex;gap:10px;padding:11px 12px;border-bottom:1px solid #efeee9;cursor:pointer;border-left:3px solid transparent}
+.msg:hover,.msg.sel{background:#f5f4ef}
+.msg.sel{border-left-color:var(--accent)}
+.msg .who{font-weight:700;font-size:12.5px}
+.msg .txt{font-size:12px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:230px}
+.tag{font-size:9.5px;font-weight:700;border-radius:7px;padding:1.5px 7px;text-transform:uppercase;letter-spacing:.4px}
+.tag.auto{background:#e6f6ef;color:#0a6b47}.tag.sensible{background:#fbecec;color:var(--critical)}.tag.prospect{background:#e7f0fb;color:#1c5cab}.tag.avis{background:#fef4dd;color:#8a5d00}
+.reply-box{background:#f7f6f2;border:1px dashed var(--baseline);border-radius:10px;padding:12px;font-size:12.5px;margin-top:10px}
+/* Pipeline */
+.pipe{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+@media(max-width:980px){.pipe{grid-template-columns:1fr 1fr}}
+.pipe .col{background:#f1f0ec;border-radius:12px;padding:10px}
+.pipe .col h4{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--ink-2);padding:2px 6px 8px;display:flex;justify-content:space-between}
+.lead{background:var(--surface-1);border:1px solid var(--grid);border-radius:10px;padding:10px 12px;margin-bottom:8px;font-size:12px}
+.lead b{font-size:12.5px}
+/* Calendar */
+.weekgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
+@media(max-width:980px){.weekgrid{grid-template-columns:1fr 1fr}}
+.day{background:var(--surface-1);border:1px solid var(--grid);border-radius:10px;padding:9px;min-height:150px}
+.day h5{font-size:11px;color:var(--ink-2);margin-bottom:7px;text-transform:capitalize}
+.day h5 b{color:var(--ink-1)}
+.slot{border-radius:8px;padding:7px 8px;font-size:11px;margin-bottom:6px;cursor:pointer;border:1px solid transparent}
+.slot:hover{border-color:var(--baseline)}
+.slot b{display:block;font-size:11px;margin:3px 0 1px}
+.slot .obj{color:var(--ink-2);font-size:10px}
+.slot.f-story{background:#fdeee6}.slot.f-reel{background:#e7f0fb}.slot.f-post{background:#e6f6ef}.slot.f-carrousel{background:#f3edfc}.slot.f-gbp{background:#fef4dd}
+.month-card{border-left:4px solid var(--s1);padding:12px 14px;background:var(--surface-1);border-radius:0 10px 10px 0;border-top:1px solid var(--grid);border-right:1px solid var(--grid);border-bottom:1px solid var(--grid);margin-bottom:10px}
+.year-item{display:flex;gap:12px;align-items:center;padding:10px 4px;border-bottom:1px solid #efeee9;font-size:12.5px}
+.year-item .m{width:70px;font-weight:700;color:var(--ink-2);font-size:11px;text-transform:uppercase;letter-spacing:.5px;flex-shrink:0}
+/* Studio */
+.studio-grid{display:grid;grid-template-columns:300px 1fr;gap:16px}
+@media(max-width:980px){.studio-grid{grid-template-columns:1fr}}
+.variant{border:1px solid var(--grid);border-radius:10px;overflow:hidden;background:var(--surface-1)}
+.variant .vhead{display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid #efeee9;font-size:11.5px;font-weight:700}
+.variant .vbody{padding:10px 12px;font-size:12px;color:var(--ink-2);line-height:1.5}
+.variant .vimg{display:flex;align-items:center;justify-content:center;font-size:34px}
+.libgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.media{border:1px solid var(--grid);border-radius:10px;overflow:hidden;background:var(--surface-1)}
+.media .mimg{height:96px;display:flex;align-items:center;justify-content:center;font-size:36px}
+.media .minfo{padding:8px 10px}
+.media .minfo b{font-size:11.5px;display:block;margin-bottom:4px}
+.mtags{display:flex;flex-wrap:wrap;gap:4px}
+.mtag{font-size:9.5px;background:#f1f0ec;color:var(--ink-2);border-radius:6px;padding:1px 6px;font-weight:600}
+/* Charts */
+.viz-root{color-scheme:light}
+.chart-wrap{position:relative}
+svg text{font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+.tooltip{position:absolute;pointer-events:none;background:#fff;border:1px solid var(--grid);border-radius:8px;box-shadow:0 4px 14px rgba(11,11,11,.12);padding:7px 10px;font-size:11.5px;display:none;z-index:30;white-space:nowrap}
+.tooltip b{display:block;font-size:12px}
+.legend{display:flex;gap:14px;font-size:11.5px;color:var(--ink-2);margin-top:6px}
+.legend .sw{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.reco{display:flex;gap:10px;align-items:flex-start;background:#f2f8f6;border:1px solid #d4e7e0;border-radius:10px;padding:11px 13px;font-size:12.5px;margin-bottom:9px;line-height:1.45}
+.reco .ic{font-size:15px}
+/* Settings */
+.setrow{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid #efeee9;gap:20px}
+.setrow:last-child{border:none}
+.setrow .t b{display:block;font-size:13px;margin-bottom:2px}
+.setrow .t span{font-size:11.5px;color:var(--ink-2)}
+.switch{width:38px;height:22px;border-radius:11px;background:#d7d5cd;position:relative;cursor:pointer;flex-shrink:0;transition:background .15s}
+.switch::after{content:"";position:absolute;width:18px;height:18px;border-radius:50%;background:#fff;top:2px;left:2px;transition:left .15s;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.switch.on{background:var(--accent)}
+.switch.on::after{left:18px}
+.radio-modes{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+@media(max-width:980px){.radio-modes{grid-template-columns:1fr}}
+.mode-opt{border:1.5px solid var(--grid);border-radius:10px;padding:12px;cursor:pointer}
+.mode-opt.sel{border-color:var(--accent);background:var(--accent-soft)}
+.mode-opt b{display:block;font-size:13px;margin-bottom:3px}
+.mode-opt span{font-size:11.5px;color:var(--ink-2);line-height:1.4;display:block}
+.proto-note{position:fixed;bottom:12px;right:14px;background:#12211c;color:#c9d8d2;font-size:10.5px;border-radius:8px;padding:6px 11px;opacity:.85;z-index:50}
+/* Modal & toast */
+.overlay{position:fixed;inset:0;background:rgba(11,11,11,.45);display:none;align-items:center;justify-content:center;z-index:90;padding:20px}
+.overlay.show{display:flex}
+.modal{background:#fff;border-radius:14px;max-width:540px;width:100%;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.3);max-height:85vh;overflow:auto}
+.modal h3{font-size:15px;margin-bottom:10px;padding-right:36px}
+.modal .mx{border:none;background:#f1f0ec;border-radius:8px;width:28px;height:28px;cursor:pointer;font-size:14px;flex-shrink:0}
+.modal-head{display:flex;align-items:flex-start;gap:10px}
+.modal-head h3{flex:1}
+.modal textarea{width:100%;min-height:110px;border:1px solid var(--grid);border-radius:8px;padding:10px;font-family:inherit;font-size:13px;margin:8px 0;box-sizing:border-box}
+.modal input,.modal select{width:100%;border:1px solid var(--grid);border-radius:8px;padding:9px 10px;font-family:inherit;font-size:13px;box-sizing:border-box;background:#fff}
+.field{margin-bottom:10px}
+.field label{display:block;font-size:11px;font-weight:700;color:var(--ink-2);margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px}
+.field-row{display:grid;grid-template-columns:2fr 1fr;gap:8px}
+#toast{position:fixed;bottom:52px;left:50%;transform:translateX(-50%);background:#12211c;color:#fff;font-size:12.5px;border-radius:10px;padding:10px 16px;display:none;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,.3)}
+.slot,.lead,.media{cursor:pointer}
+.media:hover,.lead:hover{box-shadow:0 3px 10px rgba(11,11,11,.10)}
+.state-no{background:#fbecec;color:var(--critical);font-weight:700;border-radius:8px;padding:6px 12px;font-size:12px;display:none}
+.brand-row{display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--grid);border-radius:10px;margin-bottom:8px;cursor:pointer}
+.brand-row:hover{background:#f7f6f2}
+.brand-row .dot{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px}
+/* Design HQ */
+.design-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}
+.poster-card{border:1px solid var(--grid);border-radius:12px;overflow:hidden;background:var(--surface-1)}
+.poster{aspect-ratio:4/5;padding:16px;display:flex;flex-direction:column;justify-content:space-between;color:#fff;position:relative}
+.poster .kicker{font-size:9px;letter-spacing:2.5px;text-transform:uppercase;opacity:.85;font-weight:700}
+.poster .big{font-size:24px;font-weight:900;line-height:1.05;letter-spacing:-.5px}
+.poster .big.xl{font-size:30px}
+.poster .sub{font-size:10.5px;opacity:.92;line-height:1.45}
+.poster .price-tag{align-self:flex-start;background:#fff;color:#111;font-weight:900;font-size:14px;border-radius:20px;padding:4px 12px}
+.poster .brandline{font-size:9.5px;letter-spacing:1.5px;text-transform:uppercase;opacity:.8;font-weight:700}
+.poster .emoji{position:absolute;right:12px;top:38%;font-size:44px;filter:drop-shadow(0 6px 10px rgba(0,0,0,.35))}
+.pg1{background:linear-gradient(160deg,#063f3a 0%,#0d6b53 55%,#d9a13b 130%)}
+.pg2{background:linear-gradient(165deg,#2a1233 0%,#7b2d5e 60%,#e0527f 120%)}
+.pg3{background:linear-gradient(160deg,#101820 0%,#243447 70%,#c8a24a 140%)}
+.pg4{background:linear-gradient(165deg,#7a2911 0%,#c8501f 60%,#f3b13c 125%)}
+.pg5{background:linear-gradient(160deg,#123c2e 0%,#1f7a55 65%,#8fd8b4 140%)}
+.poster-meta{padding:9px 11px;display:flex;flex-direction:column;gap:7px}
+.poster-meta .row1{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.engine{font-size:9px;font-weight:800;letter-spacing:.5px;border-radius:7px;padding:2px 7px;text-transform:uppercase}
+.engine.gpt{background:#e7f0fb;color:#1c5cab}.engine.nano{background:#e6f6ef;color:#0a6b47}.engine.ideo{background:#f3edfc;color:#5b3aa7}
+.poster-meta .acts2{display:flex;gap:5px;flex-wrap:wrap}
+.poster-meta .acts2 .btn{padding:4px 9px;font-size:10.5px}
+.ab-wrap{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.ab-wrap .poster-card{max-width:320px;margin:0 auto;width:100%}
+/* Story de la semaine (mini) */
+.story-mini{width:100%;max-width:265px;aspect-ratio:9/16;border-radius:18px;overflow:hidden;background:var(--st-bg,linear-gradient(175deg,#0a3129,#0d4a3a 45%,#0a2e26));color:#fff;display:flex;flex-direction:column;margin:0 auto;box-shadow:0 10px 30px rgba(10,49,41,.35)}
+.sm-photo{height:24%;background:var(--st-photo,linear-gradient(160deg,#d9a13b,#c8501f 70%));position:relative;display:flex;align-items:center;justify-content:center;font-size:42px;flex-shrink:0}
+.sm-badge{position:absolute;top:8px;left:8px;background:#fff;color:#0a3129;font-weight:800;font-size:8px;padding:3px 8px;border-radius:12px;letter-spacing:.5px}
+.sm-brand{position:absolute;top:8px;right:8px;font-weight:800;font-size:9px;text-shadow:0 1px 4px rgba(0,0,0,.5)}
+.sm-title{padding:9px 12px 1px;font-weight:900;font-size:16px;letter-spacing:-.3px}
+.sm-title span{color:var(--st-accent,#f3c04b)}
+.sm-sub{padding:0 12px;font-size:8.5px;opacity:.85}
+.sm-days{flex:1;padding:8px 12px;display:flex;flex-direction:column;gap:4px;min-height:0}
+.sm-day{display:flex;gap:6px;align-items:center;background:rgba(255,255,255,.08);border-radius:8px;padding:4px 7px}
+.sm-day .d{background:var(--st-accent,#f3c04b);color:#111;font-weight:800;font-size:7px;border-radius:5px;padding:2px 0;text-transform:uppercase;flex-shrink:0;width:26px;text-align:center}
+.sm-day b{font-size:8.5px;display:block;line-height:1.25}
+.sm-day span{font-size:7px;opacity:.8;display:block}
+.sm-day.off{opacity:.5}
+.sm-day.off .d{background:rgba(255,255,255,.2);color:#fff}
+.sm-day.sp{border:1px solid var(--st-accent,#f3c04b);background:rgba(255,255,255,.12)}
+.sm-day.sp b{color:var(--st-accent,#f3c04b)}
+.swatch{width:26px;height:26px;border-radius:50%;cursor:pointer;border:2px solid transparent;display:inline-block}
+.swatch.on{border-color:var(--ink-1);box-shadow:0 0 0 2px #fff inset}
+.photopick{width:34px;height:34px;border-radius:9px;cursor:pointer;border:2px solid transparent;display:flex;align-items:center;justify-content:center;font-size:17px}
+.photopick.on{border-color:var(--accent);background:var(--accent-soft)}
+.pick-row{display:flex;gap:7px;align-items:center;justify-content:center;flex-wrap:wrap;margin-top:10px}
+.pick-row .lb{font-size:10px;font-weight:700;color:var(--ink-2);text-transform:uppercase;letter-spacing:.5px;width:100%;text-align:center}
+.sm-foot{padding:7px 12px 10px;border-top:1px solid rgba(255,255,255,.15);font-size:8px;display:flex;justify-content:space-between;align-items:center}
+.sm-foot .pill-w{background:#fff;color:#0a3129;font-weight:800;border-radius:10px;padding:2px 8px}
+@media(max-width:980px){.ab-wrap{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="app viz-root" data-palette="#2a78d6,#eb6834,#1baf7a,#eda100">
+
+<!-- ================= SIDEBAR ================= -->
+<aside class="sidebar">
+  <div class="logo">Social<span>Flow</span> AI</div>
+  <div class="logo-sub">Community manager autonome</div>
+  <div class="brandpick" title="Changer de marque (multi-clients)">
+    <div class="dot">🍜</div>
+    <div><b>Chana Thaï</b><small>Food truck + Gif-sur-Yvette</small></div>
+    <div class="chev">▾</div>
+  </div>
+  <div class="nav-label">Pilotage</div>
+  <button class="nav-item active" data-screen="dashboard"><span class="ico">◧</span>Tableau de bord</button>
+  <button class="nav-item" data-screen="calendrier"><span class="ico">▦</span>Calendrier</button>
+  <button class="nav-item" data-screen="emplacements"><span class="ico">⚑</span>Emplacements</button>
+  <button class="nav-item" data-screen="analyse"><span class="ico">◔</span>Analyse<span class="badge blue">30 j</span></button>
+  <button class="nav-item" data-screen="seo"><span class="ico">◈</span>SEO &amp; moteurs IA</button>
+  <div class="nav-label">Contenus</div>
+  <button class="nav-item" data-screen="studio"><span class="ico">✦</span>Studio de création</button>
+  <button class="nav-item" data-screen="design"><span class="ico">◆</span>Design haute qualité<span class="badge blue">HQ</span></button>
+  <button class="nav-item" data-screen="bibliotheque"><span class="ico">▤</span>Bibliothèque</button>
+  <button class="nav-item" data-screen="validation"><span class="ico">✓</span>À valider<span class="badge" id="badge-valid">3</span></button>
+  <div class="nav-label">Communauté</div>
+  <button class="nav-item" data-screen="inbox"><span class="ico">✉</span>Boîte de réception<span class="badge">5</span></button>
+  <button class="nav-item" data-screen="prospects"><span class="ico">◎</span>Prospects</button>
+  <div class="nav-label">Configuration</div>
+  <button class="nav-item" data-screen="parametres"><span class="ico">⚙</span>Paramètres</button>
+  <div class="sb-foot">Prototype v4 · août 2026<br>Données de démonstration</div>
+</aside>
+
+<!-- ================= MAIN ================= -->
+<div class="main">
+  <div class="topbar">
+    <h1 id="screen-title">Tableau de bord</h1>
+    <div class="mode-chip"><span class="pulse"></span>Mode semi-automatique</div>
+    <div class="right">
+      <span class="muted">samedi 1 août 2026</span>
+      <div class="avatar">P</div>
+    </div>
+  </div>
+
+  <!-- ========== DASHBOARD ========== -->
+  <section class="screen active" id="dashboard">
+    <div class="card" style="margin-bottom:14px;background:linear-gradient(135deg,#f2f8f6,#fcfcfb);border-color:#d4e7e0">
+      <h3>☀️ Votre matinée, préparée par SocialFlow <small>· générée à 7h00</small></h3>
+      <p class="small" style="line-height:1.55;max-width:760px">
+        Aujourd'hui, <b>Chana Thaï est à Montigny à midi</b> et à <b>HEC ce soir</b>. Deux Stories et une publication
+        sont prêtes et programmées. <b>34 °C prévus cet après-midi</b> : les Bubble Tea et Mister Freeze ont été mis en avant
+        à la place des plats chauds. Une photo du service de ce soir à HEC serait utile pour la Story de dimanche.
+      </p>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button class="btn primary" data-goto="validation">Voir les contenus du jour</button>
+        <button class="btn ghost" data-goto="calendrier">Ouvrir le calendrier</button>
+      </div>
+    </div>
+    <div class="row cols-4">
+      <div class="kpi"><div class="lbl">Vues (7 derniers jours)</div><div class="val">12 480</div><div class="delta up">▲ +18 % vs semaine préc.</div></div>
+      <div class="kpi"><div class="lbl">Publications programmées</div><div class="val">9</div><div class="delta neutral">jusqu'à dimanche</div></div>
+      <div class="kpi"><div class="lbl">Messages en attente</div><div class="val">5</div><div class="delta neutral">dont 1 sensible</div></div>
+      <div class="kpi"><div class="lbl">Prospects actifs</div><div class="val">4</div><div class="delta up">▲ 2 nouveaux cette semaine</div></div>
+    </div>
+    <div class="row cols-32">
+      <div class="card">
+        <h3>Prochaines publications</h3>
+        <table class="data">
+          <thead><tr><th></th><th>Contenu</th><th>Format</th><th>Réseaux</th><th>Quand</th><th>Statut</th></tr></thead>
+          <tbody>
+            <tr><td><div class="thumb g1">🧋</div></td><td><b>Bubble Tea fraîcheur</b><br><span class="muted">Mis en avant : forte chaleur</span></td><td><span class="pill story">Story</span></td><td><span class="net">IG</span> <span class="net">FB</span></td><td>Auj. 11h30</td><td><span class="check">✓ Programmé</span></td></tr>
+            <tr><td><div class="thumb g2">📍</div></td><td><b>Ce soir : HEC campus</b><br><span class="muted">Lieu + horaires du service</span></td><td><span class="pill post">Post</span></td><td><span class="net">IG</span> <span class="net">FB</span> <span class="net">GBP</span></td><td>Auj. 17h00</td><td><span class="check">✓ Programmé</span></td></tr>
+            <tr><td><div class="thumb g3">🍗</div></td><td><b>Reel Crousty Thaï en cuisson</b><br><span class="muted">Montage auto 15 s, sous-titres</span></td><td><span class="pill reel">Reel</span></td><td><span class="net">IG</span> <span class="net">TikTok</span></td><td>Dim. 12h00</td><td><span style="color:#8a5d00;font-weight:700">⏳ À valider</span></td></tr>
+            <tr><td><div class="thumb g6">🗓</div></td><td><b>Planning de la semaine</b><br><span class="muted">Emplacements lun→dim</span></td><td><span class="pill story">Story + Post</span></td><td><span class="net">IG</span> <span class="net">FB</span></td><td>Dim. 18h00</td><td><span style="color:#8a5d00;font-weight:700">⏳ À valider</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="card">
+        <h3>Alertes et suggestions</h3>
+        <div class="alert-line"><span class="ic">📸</span><div><b>Photo demandée :</b> service du soir à HEC pour la Story de dimanche.<div class="muted">L'équipe a été notifiée sur mobile</div></div></div>
+        <div class="alert-line"><span class="ic">🌡</span><div><b>Météo 34 °C :</b> Bubble Tea et Mister Freeze mis en avant automatiquement.</div></div>
+        <div class="alert-line"><span class="ic">⚠️</span><div><b>1 message sensible</b> en attente de votre validation (allergie).<div class="muted">Aucune réponse automatique envoyée</div></div></div>
+        <div class="alert-line"><span class="ic">🎉</span><div><b>Rentrée HEC dans 30 jours :</b> la campagne de septembre est prête à être générée.</div></div>
+        <div class="alert-line"><span class="ic">📈</span><div><b>Vos Reels de préparation</b> font ×3 en vues : le planning de septembre en contiendra davantage.</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== CALENDRIER ========== -->
+  <section class="screen" id="calendrier">
+    <div class="tabs" id="cal-tabs">
+      <button class="on" data-cal="cal-semaine">Semaine</button>
+      <button data-cal="cal-mois">Mois</button>
+      <button data-cal="cal-annee">Année</button>
+    </div>
+    <div id="cal-semaine">
+      <p class="small" style="margin-bottom:12px">Semaine du 3 au 9 août · générée depuis le planning mensuel « Été gourmand » · <b>9 contenus</b></p>
+      <div class="weekgrid">
+        <div class="day"><h5>lun. <b>3</b></h5><div class="slot f-story"><span class="pill story">Story</span><b>Coulisses de préparation</b><span class="obj">Créer de la proximité</span></div></div>
+        <div class="day"><h5>mar. <b>4</b></h5><div class="slot f-post"><span class="pill post">Post</span><b>Lieu du food truck</b><span class="obj">Générer des visites</span></div><div class="slot f-story"><span class="pill story">Story</span><b>Rappel emplacement</b><span class="obj">Informer</span></div></div>
+        <div class="day"><h5>mer. <b>5</b></h5><div class="slot f-reel"><span class="pill reel">Reel</span><b>Vidéo du Crousty Thaï</b><span class="obj">Donner envie</span></div></div>
+        <div class="day"><h5>jeu. <b>6</b></h5><div class="slot f-carrousel"><span class="pill carrousel">Carrousel</span><b>Avis d'un client</b><span class="obj">Rassurer</span></div></div>
+        <div class="day"><h5>ven. <b>7</b></h5><div class="slot f-post"><span class="pill post">Post</span><b>Offre du week-end</b><span class="obj">Vendre</span></div><div class="slot f-gbp"><span class="pill gbp">GBP</span><b>Offre Google</b><span class="obj">Visibilité locale</span></div></div>
+        <div class="day"><h5>sam. <b>8</b></h5><div class="slot f-story"><span class="pill story">Story</span><b>Équipe et ambiance</b><span class="obj">Humaniser la marque</span></div></div>
+        <div class="day"><h5>dim. <b>9</b></h5><div class="slot f-story"><span class="pill story">Story</span><b>Planning de la semaine</b><span class="obj">Informer</span></div><div class="slot f-post"><span class="pill post">Post</span><b>Planning semaine</b><span class="obj">Informer</span></div></div>
+      </div>
+      <p class="muted" style="margin-top:12px">Cliquez sur un contenu pour l'ouvrir dans le studio · glisser-déposer pour déplacer (dans la version finale)</p>
+    </div>
+    <div id="cal-mois" style="display:none">
+      <div class="month-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+          <div><b style="font-size:15px">Août 2026 · « Été gourmand &amp; privatisations »</b>
+          <p class="small" style="margin-top:4px">Produit phare : <b>Bubble Tea Premium</b> · Objectif : trafic food truck + demandes de privatisation</p></div>
+          <button class="btn ghost demo">Régénérer le mois</button>
+        </div>
+        <div class="row cols-4" style="margin-top:12px;margin-bottom:0">
+          <div><div class="muted">Publications</div><b>26</b> <span class="muted">(9 Reels · 8 Stories · 6 Posts · 3 Carrousels)</span></div>
+          <div><div class="muted">Budget pub conseillé</div><b>90 €</b> <span class="muted">boost offres week-end</span></div>
+          <div><div class="muted">Résultat attendu</div><b>+15 %</b> <span class="muted">de vues, 6 devis</span></div>
+          <div><div class="muted">Temps forts</div><b>Festivals · privatisations</b></div>
+        </div>
+      </div>
+      <div class="month-card" style="border-left-color:var(--s2)">
+        <b style="font-size:15px">Septembre 2026 · « Rentrée HEC »</b>
+        <p class="small" style="margin-top:4px">Produit phare : <b>Crousty Thaï</b> · Objectif : conquête étudiants, +200 abonnés · 24 publications · budget 120 €</p>
+      </div>
+    </div>
+    <div id="cal-annee" style="display:none">
+      <div class="card">
+        <h3>Campagnes 2026-2027 <small>· générées depuis le profil de marque, modifiables</small></h3>
+        <div class="year-item"><div class="m">Août</div><div>🎪 <b>Festivals d'été</b> + privatisations estivales</div></div>
+        <div class="year-item"><div class="m">Sept.</div><div>🎓 <b>Rentrée HEC</b> et campus, conquête étudiants</div></div>
+        <div class="year-item"><div class="m">Oct.</div><div>🍂 Retour des plats chauds · <b>Panang &amp; Pad Thaï</b></div></div>
+        <div class="year-item"><div class="m">Nov.</div><div>💼 Campagne <b>traiteur entreprises</b> (fêtes de fin d'année)</div></div>
+        <div class="year-item"><div class="m">Déc.</div><div>🎄 <b>Marchés de Noël</b> + bilan de l'année</div></div>
+        <div class="year-item"><div class="m">Janv.</div><div>❄️ Réconfort d'hiver + vœux · communication institutionnelle</div></div>
+        <div class="year-item"><div class="m">Févr.</div><div>💝 <b>Saint-Valentin</b> · menu duo</div></div>
+        <div class="year-item"><div class="m">Avril</div><div>🎉 <b>Nouvel An thaï — Songkran</b> · temps fort identitaire</div></div>
+        <div class="year-item"><div class="m">Mai-juin</div><div>💍 Campagne <b>mariages &amp; événements</b> · Fête de la musique</div></div>
+        <div class="year-item"><div class="m">Juillet</div><div>🌞 Saison des festivals · concours d'été</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== EMPLACEMENTS ========== -->
+  <section class="screen" id="emplacements">
+    <p class="small" style="margin-bottom:14px">Le calendrier des emplacements pilote la communication : Story « on est là », fiche Google mise à jour, réponses automatiques « vous êtes où ? ». Chaque lieu peut avoir ses tarifs.</p>
+    <div class="card" style="margin-bottom:14px;border-color:#f3d9a4;background:#fffbf2">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <span style="font-size:16px">⚠️</span>
+        <div style="flex:1"><b>Samedi 8 : festival de Chevreuse ajouté au calendrier, aucun contenu prévu.</b><div class="muted">Nouvel emplacement détecté, tarifs « festival » applicables</div></div>
+        <button class="btn primary" onclick="toast('3 contenus générés pour le festival (démo)')">Générer les contenus</button>
+      </div>
+    </div>
+    <div class="row cols-32">
+      <div class="card">
+        <h3>Semaine du 3 au 9 août <small>· cliquez sur un jour pour le modifier</small></h3>
+        <div id="emp-table"></div>
+        <div style="display:flex;gap:8px;margin-top:12px"><button class="btn primary" onclick="addEmp()">+ Ajouter un emplacement</button><button class="btn ghost demo">Gérer les tarifs par lieu</button></div>
+        <p class="muted" style="margin-top:10px">Toute modification met à jour les Stories « on est là », la fiche Google, les réponses « vous êtes où ? » et la story de la semaine ci-contre.</p>
+      </div>
+      <div class="card">
+        <h3>Story de la semaine <small>· générée automatiquement</small></h3>
+        <div id="story-prev"></div>
+        <div class="pick-row"><span class="lb">Couleurs</span><span id="sw-row"></span></div>
+        <div class="pick-row"><span class="lb">Photo de la semaine (bibliothèque)</span><span id="ph-row" style="display:flex;gap:6px"></span></div>
+        <div style="display:flex;gap:8px;margin-top:12px;justify-content:center;flex-wrap:wrap">
+          <button class="btn primary" onclick="toast('Story programmée dimanche 18h en Story + Post ✓')">Programmer dim. 18h</button>
+        </div>
+        <p class="muted" style="margin-top:10px;text-align:center">Se met à jour à chaque modification du calendrier · dans la version finale : vraies photos de la bibliothèque et couleurs de ta charte</p>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Automatisations liées aux emplacements</h3>
+      <div class="setrow"><div class="t"><b>Story « on est là » à l'ouverture du service</b><span>Lieu, horaires et plat du jour, publiée à 11h30</span></div><div class="switch on"></div></div>
+      <div class="setrow"><div class="t"><b>Mise à jour Google Business selon le lieu du jour</b><span>Adresse de service et post local automatique</span></div><div class="switch on"></div></div>
+      <div class="setrow"><div class="t"><b>Réponse automatique « vous êtes où ? »</b><span>Répond en DM depuis le calendrier, 7 j/7</span></div><div class="switch on"></div></div>
+      <div class="setrow"><div class="t"><b>Planning de la semaine chaque dimanche 18h</b><span>Story + Post récapitulatifs</span></div><div class="switch on"></div></div>
+      <div class="setrow"><div class="t"><b>Alerte emplacement sans contenu</b><span>Notification si un lieu du calendrier n'a rien de prévu</span></div><div class="switch on"></div></div>
+    </div>
+  </section>
+
+  <!-- ========== SEO & MOTEURS IA ========== -->
+  <section class="screen" id="seo">
+    <p class="small" style="margin-bottom:14px">Être trouvé sur Google et recommandé par les IA. Les contenus publiés (posts Google, avis, cohérence des infos) alimentent directement ces résultats.</p>
+    <div class="row cols-4">
+      <div class="kpi"><div class="lbl">Position moyenne Google</div><div class="val">8,4</div><div class="delta up">▲ +2,1 places ce mois</div></div>
+      <div class="kpi"><div class="lbl">Mots-clés en top 10</div><div class="val">23<span style="font-size:14px;color:var(--ink-3)"> / 60 suivis</span></div><div class="delta up">▲ +5</div></div>
+      <div class="kpi"><div class="lbl">Santé fiche Google</div><div class="val">92 %</div><div class="delta neutral">photos et posts à jour</div></div>
+      <div class="kpi"><div class="lbl">Visibilité moteurs IA</div><div class="val">3<span style="font-size:14px;color:var(--ink-3)"> / 6 requêtes</span></div><div class="delta up">▲ +1 (Claude)</div></div>
+    </div>
+    <div class="row cols-2">
+      <div class="card">
+        <h3>Positions Google locales <small>· mots-clés prioritaires</small></h3>
+        <table class="data">
+          <thead><tr><th>Mot-clé</th><th class="num">Position</th><th class="num">Évolution</th></tr></thead>
+          <tbody>
+            <tr><td>food truck thaï Essonne</td><td class="num">2</td><td class="num" style="color:var(--goodtext)">▲ +1</td></tr>
+            <tr><td>food truck mariage 91</td><td class="num">4</td><td class="num" style="color:var(--goodtext)">▲ +3</td></tr>
+            <tr><td>traiteur thaï événementiel</td><td class="num">6</td><td class="num" style="color:var(--goodtext)">▲ +2</td></tr>
+            <tr><td>food truck Gif-sur-Yvette</td><td class="num">1</td><td class="num" style="color:var(--ink-3)">=</td></tr>
+            <tr><td>stand bubble tea événement</td><td class="num">9</td><td class="num" style="color:var(--goodtext)">▲ +4</td></tr>
+            <tr><td>privatisation food truck Yvelines</td><td class="num">12</td><td class="num" style="color:var(--critical)">▼ −2</td></tr>
+          </tbody>
+        </table>
+        <p class="muted" style="margin-top:8px">60 mots-clés suivis sur le référentiel de 400+ · relevé hebdomadaire</p>
+      </div>
+      <div class="card">
+        <h3>Visibilité dans les moteurs IA <small>· « GEO » · test mensuel</small></h3>
+        <div class="alert-line"><span class="ic">✅</span><div><b>« Food truck thaï pour un mariage dans le 91 »</b><div class="muted">Cité par ChatGPT et Claude · pas encore par Gemini</div></div></div>
+        <div class="alert-line"><span class="ic">✅</span><div><b>« Meilleur food truck thaï Île-de-France »</b><div class="muted">Cité par Claude</div></div></div>
+        <div class="alert-line"><span class="ic">❌</span><div><b>« Traiteur pour événement d'entreprise Saclay »</b><div class="muted">Non cité · recommandation : page dédiée + 3 avis mentionnant « entreprise »</div></div></div>
+        <div class="alert-line"><span class="ic">❌</span><div><b>« Stand bubble tea pour festival »</b><div class="muted">Non cité · contenu prévu dans la campagne de septembre</div></div></div>
+        <div class="reco" style="margin-top:10px"><span class="ic">💡</span><div>Les avis Google mentionnant « mariage » ont doublé la visibilité IA sur cette requête. L'app demandera un avis après chaque prestation événementielle.</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== STUDIO ========== -->
+  <section class="screen" id="studio">
+    <p class="small" style="margin-bottom:14px">Une photo → toutes les déclinaisons. La photo originale reste la matière première : l'IA nettoie, recadre et habille aux couleurs de la marque, elle ne génère jamais de faux plats.</p>
+    <div class="studio-grid">
+      <div class="card">
+        <h3>Photo source</h3>
+        <div class="g1" style="border-radius:10px;height:210px;display:flex;align-items:center;justify-content:center;font-size:72px">🍗</div>
+        <p class="small" style="margin-top:10px"><b>crousty-thai-service.jpg</b></p>
+        <div class="mtags" style="margin-top:6px"><span class="mtag">Crousty Thaï</span><span class="mtag">Food Truck</span><span class="mtag">Plat chaud</span></div>
+        <p class="muted" style="margin-top:10px">Étiquetée automatiquement · utilisée 2 fois ce mois</p>
+        <button class="btn primary" style="margin-top:12px;width:100%" id="btn-generate">✦ Générer les déclinaisons</button>
+      </div>
+      <div>
+        <div class="row cols-3" style="margin-bottom:14px">
+          <div class="variant"><div class="vhead"><span class="pill story">Story 9:16</span> Instagram</div><div class="vimg g1" style="height:150px">🍗</div><div class="vbody">Habillage charte + prix « 13 € » + sticker lieu du jour</div></div>
+          <div class="variant"><div class="vhead"><span class="pill post">Post 1:1</span> Instagram · Facebook</div><div class="vimg g1" style="height:110px">🍗</div><div class="vbody">Photo retouchée, logo, accroche courte</div></div>
+          <div class="variant"><div class="vhead"><span class="pill gbp">Visuel Google</span> GBP</div><div class="vimg g1" style="height:110px">🍗</div><div class="vbody">Format paysage, offre mise en avant</div></div>
+        </div>
+        <div class="card" style="margin-bottom:14px">
+          <h3>Légendes générées <small>· 3 variantes, ton « convivial et gourmand »</small></h3>
+          <div class="reply-box" style="margin-top:0" id="cap-main">「 Le Crousty Thaï qui croustille encore à 14h 😋 Poulet croustillant, sauce coco combava, riz parfumé. Aujourd'hui à Montigny, ce soir à HEC ! 」<div class="muted" style="margin-top:6px">Variante courte · #foodtruck #thai #croustythaï #montigny</div></div>
+          <div class="reply-box">「 Il est de retour. Le Crousty Thaï, notre best-seller : 13 €, fait minute par notre cheffe. Formule plat + bubble tea à 19 €. On vous en garde un ? 」<div class="muted" style="margin-top:6px">Variante commerciale · prix vérifiés ✓</div></div>
+          <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button class="btn ghost" data-cap="regen">↻ Régénérer</button><button class="btn ghost" data-cap="court">Plus court</button><button class="btn ghost" data-cap="commercial">Plus commercial</button><button class="btn ghost" data-cap="prix">Mentionner le prix</button></div>
+        </div>
+        <div class="card">
+          <h3>Script Reel 15 s <small>· liste de tournage incluse</small></h3>
+          <p class="small" style="line-height:1.6">1. (0-3 s) Ouverture du camion, enseigne visible · 2. (3-8 s) Cuisson du poulet croustillant, gros plan · 3. (8-12 s) Dressage du bol, sauce versée au ralenti · 4. (12-15 s) Réaction client + prix à l'écran « 13 € ».<br><span class="muted">Sous-titres automatiques · musique libre de droits « Street Food Vibes » · logo animé en fin</span></p>
+        </div>
+      </div>
+    </div>
+  </section>
+  <!-- ========== DESIGN HQ ========== -->
+  <section class="screen" id="design">
+    <p class="small" style="margin-bottom:14px">Affiches, menus et visuels premium générés par les meilleurs moteurs d'image (GPT Image 2, Nano Banana 2, Ideogram), toujours aux couleurs de la marque. Les photos de plats restent réelles : ici on crée le design autour.</p>
+    <div class="card" style="margin-bottom:16px">
+      <h3>Nouveau design</h3>
+      <div class="field"><label>Brief</label><input id="dz-brief" placeholder="Ex : affiche pour la privatisation mariage, ambiance élégante, doré et vert Chana Thaï"></div>
+      <div class="row cols-3" style="margin-bottom:0">
+        <div class="field"><label>Type de visuel</label><select id="dz-type"><option>Affiche événement</option><option>Menu / carte</option><option>Promotion</option><option>Visuel réseaux premium</option><option>Bâche / kakemono</option></select></div>
+        <div class="field"><label>Format</label><select><option>4:5 (affiche)</option><option>9:16 (story)</option><option>1:1 (post)</option><option>A3 impression</option></select></div>
+        <div class="field"><label>Moteur</label><select id="dz-engine"><option value="auto">Auto (le meilleur selon le brief)</option><option value="gpt">GPT Image 2 · design &amp; texte</option><option value="nano">Nano Banana 2 · photo réelle intégrée</option><option value="ideo">Ideogram · affiches typographiques</option></select></div>
+      </div>
+      <button class="btn primary" onclick="genDesign()">◆ Générer en haute qualité</button>
+      <span class="muted" style="margin-left:10px">2 à 3 variantes par brief · charte appliquée automatiquement</span>
+    </div>
+    <div class="card" style="margin-bottom:16px">
+      <h3>Duel de moteurs <small>· même brief, deux moteurs : choisissez, l'app apprend vos préférences</small></h3>
+      <p class="muted" style="margin-bottom:10px">Brief : « Affiche Nouvel An thaï Songkran, festive et premium »</p>
+      <div class="ab-wrap">
+        <div class="poster-card">
+          <div class="poster pg1"><div><div class="kicker">13 avril · Gif-sur-Yvette</div><div class="big xl">SONGKRAN<br>FESTIVAL</div></div><span class="emoji">💦</span><div><div class="sub">Nouvel An thaï · menu spécial de la cheffe · bubble tea offert dès 25 €</div><div class="brandline" style="margin-top:8px">Chana Thaï · cuisine de Bangkok</div></div></div>
+          <div class="poster-meta"><div class="row1"><span class="engine gpt">GPT Image 2</span><span class="muted">rendu texte impeccable</span></div><div class="acts2"><button class="btn primary" onclick="toast('Préférence enregistrée : GPT Image 2 gagne sur les affiches événement ✓')">Choisir celle-ci</button></div></div>
+        </div>
+        <div class="poster-card">
+          <div class="poster pg5"><div><div class="kicker">Nouvel an thaï · 13 avril</div><div class="big">L'eau, la fête,<br>le goût de<br>Bangkok</div></div><span class="emoji">🌊</span><div><div class="sub">Songkran chez Chana Thaï · photo réelle du Pad Thaï intégrée au visuel</div><div class="brandline" style="margin-top:8px">Chana Thaï</div></div></div>
+          <div class="poster-meta"><div class="row1"><span class="engine nano">Nano Banana 2</span><span class="muted">vraie photo intégrée</span></div><div class="acts2"><button class="btn primary" onclick="toast('Préférence enregistrée : Nano Banana 2 gagne sur ce brief ✓')">Choisir celle-ci</button></div></div>
+        </div>
+      </div>
+    </div>
+    <h3 style="font-size:13.5px;font-weight:700;margin-bottom:12px">Créations récentes</h3>
+    <div class="design-grid" id="design-grid">
+      <div class="poster-card">
+        <div class="poster pg3"><div><div class="kicker">Mariages &amp; réceptions</div><div class="big">Privatisez<br>le camion</div></div><span class="emoji">💍</span><div><div class="sub">Cuisine thaï fraîche préparée sur place · 60 à 200 convives · Essonne &amp; Yvelines</div><div class="brandline" style="margin-top:8px">Chana Thaï traiteur · devis en 24h</div></div></div>
+        <div class="poster-meta"><div class="row1"><span class="engine gpt">GPT Image 2</span><span class="pill post">4:5</span></div><div class="acts2"><button class="btn ghost" onclick="toast('Déclinée en Story, Post et visuel Google (démo)')">Décliner</button><button class="btn ghost" onclick="toast('Variante générée (démo)')">Variante</button><button class="btn ghost demo">HD</button></div></div>
+      </div>
+      <div class="poster-card">
+        <div class="poster pg2"><div><div class="kicker">Ce week-end seulement</div><div class="big xl">2ᵉ BUBBLE<br>TEA −50%</div></div><span class="emoji">🧋</span><div><div class="price-tag">6,50 € le 1ᵉʳ</div><div class="brandline" style="margin-top:8px">Samedi midi · marché de Gif</div></div></div>
+        <div class="poster-meta"><div class="row1"><span class="engine gpt">GPT Image 2</span><span class="pill story">9:16</span></div><div class="acts2"><button class="btn ghost" onclick="toast('Déclinée en Story, Post et visuel Google (démo)')">Décliner</button><button class="btn ghost" onclick="toast('Variante générée (démo)')">Variante</button><button class="btn ghost demo">HD</button></div></div>
+      </div>
+      <div class="poster-card">
+        <div class="poster pg4"><div><div class="kicker">La carte du camion</div><div class="big">MENU<br>CHANA THAÏ</div></div><span class="emoji">🍜</span><div><div class="sub">Pad Thaï 13 € · Crousty Thaï 13 € · Nems 6 € · Formules dès 15 € · Bubble tea 6,50 €</div><div class="brandline" style="margin-top:8px">Prix vérifiés sur la carte ✓</div></div></div>
+        <div class="poster-meta"><div class="row1"><span class="engine ideo">Ideogram</span><span class="pill gbp">A3</span></div><div class="acts2"><button class="btn ghost" onclick="toast('Déclinée en Story, Post et visuel Google (démo)')">Décliner</button><button class="btn ghost" onclick="toast('Variante générée (démo)')">Variante</button><button class="btn ghost demo">Imprimer</button></div></div>
+      </div>
+      <div class="poster-card">
+        <div class="poster pg5"><div><div class="kicker">Photo réelle · service du soir</div><div class="big">Le Crousty<br>qui rend<br>accro</div></div><span class="emoji">🍗</span><div><div class="sub">Votre photo du Crousty Thaï, détourée et mise en scène, prix incrusté : 13 €</div><div class="brandline" style="margin-top:8px">Chana Thaï · fait minute</div></div></div>
+        <div class="poster-meta"><div class="row1"><span class="engine nano">Nano Banana 2</span><span class="pill post">1:1</span></div><div class="acts2"><button class="btn ghost" onclick="toast('Déclinée en Story, Post et visuel Google (démo)')">Décliner</button><button class="btn ghost" onclick="toast('Variante générée (démo)')">Variante</button><button class="btn ghost demo">HD</button></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== BIBLIOTHEQUE ========== -->
+  <section class="screen" id="bibliotheque">
+    <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap" id="lib-filters">
+      <button class="btn primary demo">+ Ajouter des médias</button>
+      <button class="btn ghost" data-filter="tous" style="background:#12211c;color:#fff">Tous</button><button class="btn ghost" data-filter="crousty">Crousty Thaï</button><button class="btn ghost" data-filter="bubbletea">Bubble Tea</button><button class="btn ghost" data-filter="foodtruck">Food Truck</button><button class="btn ghost" data-filter="traiteur">Traiteur</button><button class="btn ghost" data-filter="equipe">Équipe</button>
+    </div>
+    <div class="card" style="margin-bottom:14px;border-color:#c8e2da;background:#f7fbf9">
+      <h3>🎬 Demandes du jour · mode équipe terrain <small>· service de ce soir à HEC</small></h3>
+      <p class="small" style="margin-bottom:10px">4 plans de 5 secondes à filmer au téléphone. Le Reel se monte automatiquement cette nuit et sera proposé à la validation demain matin.</p>
+      <table class="data">
+        <tbody>
+          <tr><td>1. Ouverture du camion, enseigne visible</td><td><span class="chk">✓ Reçu à 18h42</span></td></tr>
+          <tr><td>2. Cuisson du poulet croustillant, gros plan</td><td><span class="chk">✓ Reçu à 19h15</span></td></tr>
+          <tr><td>3. Dressage du bol, sauce versée</td><td><span class="chk warn">⏳ En attente</span></td></tr>
+          <tr><td>4. Réaction d'un client (avec son accord)</td><td><span class="chk warn">⏳ En attente</span></td></tr>
+        </tbody>
+      </table>
+      <button class="btn ghost" style="margin-top:10px" onclick="toast('Rappel envoyé sur le téléphone de l\'équipe (démo)')">Relancer l'équipe</button>
+    </div>
+    <div class="libgrid">
+      <div class="media" data-tags="crousty foodtruck"><div class="mimg g1">🍗</div><div class="minfo"><b>Crousty Thaï service</b><div class="mtags"><span class="mtag">Crousty Thaï</span><span class="mtag">Plat</span></div><div class="muted" style="margin-top:5px">Utilisée 2× ce mois</div></div></div>
+      <div class="media" data-tags="bubbletea"><div class="mimg g6">🧋</div><div class="minfo"><b>Bubble tea duo</b><div class="mtags"><span class="mtag">Bubble Tea</span></div><div class="muted" style="margin-top:5px">Utilisée 5× · ⚠ à varier</div></div></div>
+      <div class="media" data-tags="foodtruck"><div class="mimg g2">🚚</div><div class="minfo"><b>Camion marché Gif</b><div class="mtags"><span class="mtag">Food Truck</span></div><div class="muted" style="margin-top:5px">Utilisée 1×</div></div></div>
+      <div class="media" data-tags="plat"><div class="mimg g4">🍜</div><div class="minfo"><b>Pad Thaï wok</b><div class="mtags"><span class="mtag">Pad Thaï</span><span class="mtag">Plat</span></div><div class="muted" style="margin-top:5px">Jamais utilisée</div></div></div>
+      <div class="media" data-tags="equipe"><div class="mimg g5">👩‍🍳</div><div class="minfo"><b>La cheffe en cuisine</b><div class="mtags"><span class="mtag">Équipe</span></div><div class="muted" style="margin-top:5px">Utilisée 3×</div></div></div>
+      <div class="media" data-tags="plat"><div class="mimg g3">🥡</div><div class="minfo"><b>Poké Salmon Sunset</b><div class="mtags"><span class="mtag">Poké</span></div><div class="muted" style="margin-top:5px">Utilisée 1×</div></div></div>
+      <div class="media" data-tags="traiteur"><div class="mimg g2">💍</div><div class="minfo"><b>Privatisation mariage</b><div class="mtags"><span class="mtag">Traiteur</span><span class="mtag">Événement</span></div><div class="muted" style="margin-top:5px">Utilisée 2×</div></div></div>
+      <div class="media" data-tags="crousty foodtruck"><div class="mimg g4">🎬</div><div class="minfo"><b>Clip cuisson (12 s)</b><div class="mtags"><span class="mtag">Vidéo</span><span class="mtag">Crousty Thaï</span></div><div class="muted" style="margin-top:5px">Nouvelle · à monter</div></div></div>
+    </div>
+    <p class="muted" style="margin-top:14px">Étiquettes ajoutées automatiquement par l'IA de vision · l'équipe dépose les photos depuis le mobile pendant le service</p>
+  </section>
+
+  <!-- ========== VALIDATION ========== -->
+  <section class="screen" id="validation">
+    <p class="small" style="margin-bottom:14px">Mode semi-automatique : ces contenus attendent votre accord (promotion, nouveau format ou sujet signalé). Tout le reste part automatiquement après les contrôles.</p>
+    <div class="vcard" id="v1">
+      <div class="preview tall"><div class="img g1">🍗</div></div>
+      <div class="body">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="pill reel">Reel 15 s</span><span class="net">Instagram</span><span class="net">TikTok</span><span class="muted">· dimanche 12h00</span></div>
+        <p class="small" style="margin:8px 0 0;line-height:1.5">« Le Crousty Thaï en pleine cuisson 🔥 13 €, fait minute. Formule plat + bubble tea 19 €. » <span class="muted">+ sous-titres, musique, logo animé</span></p>
+        <div class="checks"><span class="chk">✓ Prix 13 € conforme</span><span class="chk">✓ Formule 19 € conforme</span><span class="chk">✓ Adresse du jour</span><span class="chk">✓ Logo présent</span><span class="chk">✓ Orthographe</span><span class="chk">✓ Pas de doublon récent</span></div>
+        <div class="acts"><button class="btn primary" data-approve="v1">✓ Valider et programmer</button><button class="btn ghost" data-edit="v1">Modifier</button><button class="btn danger" data-reject="v1">Refuser</button><span class="state-ok">✓ Programmé pour dimanche 12h00</span><span class="state-no">✕ Refusé — un contenu de remplacement sera proposé</span></div>
+      </div>
+    </div>
+    <div class="vcard" id="v2">
+      <div class="preview"><div class="img g6">🧋</div></div>
+      <div class="body">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="pill post">Post promo</span><span class="net">IG</span><span class="net">FB</span><span class="net">GBP</span><span class="muted">· vendredi 11h00</span></div>
+        <p class="small" style="margin:8px 0 0;line-height:1.5">« Week-end fraîcheur : le 2ᵉ Bubble Tea à −50 % samedi midi au marché de Gif ! »</p>
+        <div class="checks"><span class="chk warn">⚠ Promotion : validation requise</span><span class="chk">✓ Prix de base 6,50 € conforme</span><span class="chk">✓ Lieu vérifié</span><span class="chk">✓ Charte respectée</span></div>
+        <div class="acts"><button class="btn primary" data-approve="v2">✓ Valider et programmer</button><button class="btn ghost" data-edit="v2">Modifier</button><button class="btn danger" data-reject="v2">Refuser</button><span class="state-ok">✓ Programmé pour vendredi 11h00</span><span class="state-no">✕ Refusé — un contenu de remplacement sera proposé</span></div>
+      </div>
+    </div>
+    <div class="vcard" id="v3">
+      <div class="preview"><div class="img g6">🗓</div></div>
+      <div class="body">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="pill story">Story + Post</span><span class="net">IG</span><span class="net">FB</span><span class="muted">· dimanche 18h00</span></div>
+        <p class="small" style="margin:8px 0 0;line-height:1.5">Planning de la semaine : lundi Montigny · mardi Gif marché · mercredi HEC · jeudi Orsay · vendredi Gif · samedi festival de Chevreuse.</p>
+        <div class="checks"><span class="chk warn">⚠ Nouvel emplacement « festival de Chevreuse » à confirmer</span><span class="chk">✓ Horaires conformes</span><span class="chk">✓ Charte respectée</span></div>
+        <div class="acts"><button class="btn primary" data-approve="v3">✓ Valider et programmer</button><button class="btn ghost" data-edit="v3">Modifier</button><button class="btn danger" data-reject="v3">Refuser</button><span class="state-ok">✓ Programmé pour dimanche 18h00</span><span class="state-no">✕ Refusé — un contenu de remplacement sera proposé</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== INBOX ========== -->
+  <section class="screen" id="inbox">
+    <div class="inbox-wrap">
+      <div class="card" style="padding:6px 0">
+        <div class="msg sel" data-msg="m1"><div class="thumb g4" style="width:32px;height:32px;font-size:15px">💬</div><div><div class="who">Léa M. <span class="tag prospect">Prospect</span></div><div class="txt">Bonjour, je cherche un food truck pour un mariage le 12 sept…</div><div class="muted">Instagram DM · il y a 25 min</div></div></div>
+        <div class="msg" data-msg="m2"><div class="thumb g3" style="width:32px;height:32px;font-size:15px">⚠️</div><div><div class="who">Karim B. <span class="tag sensible">Sensible</span></div><div class="txt">Mon fils est allergique à l'arachide, le pad thaï en contient ?</div><div class="muted">Facebook · il y a 1 h</div></div></div>
+        <div class="msg" data-msg="m3"><div class="thumb g2" style="width:32px;height:32px;font-size:15px">✅</div><div><div class="who">Sophie R. <span class="tag auto">Répondu auto</span></div><div class="txt">Vous êtes où aujourd'hui ?</div><div class="muted">Instagram DM · il y a 2 h</div></div></div>
+        <div class="msg" data-msg="m4"><div class="thumb g6" style="width:32px;height:32px;font-size:15px">⭐</div><div><div class="who">Avis Google · 5★ <span class="tag avis">Avis</span></div><div class="txt">« Le meilleur thaï du 91, le crousty est incroyable »</div><div class="muted">GBP · hier</div></div></div>
+        <div class="msg" data-msg="m5"><div class="thumb g2" style="width:32px;height:32px;font-size:15px">✅</div><div><div class="who">Tom D. <span class="tag auto">Répondu auto</span></div><div class="txt">Avez-vous des plats végétariens ?</div><div class="muted">Instagram · hier</div></div></div>
+      </div>
+      <div>
+        <div class="card" id="pane-m1">
+          <h3>Léa M. · Instagram DM <span class="tag prospect">Opportunité détectée</span></h3>
+          <p class="small" style="background:#f1f0ec;border-radius:10px;padding:10px 12px;line-height:1.5">« Bonjour, je cherche un food truck pour un mariage le 12 septembre, environ 90 personnes, vers Rambouillet. Vous faites ça ? Quel budget prévoir ? »</p>
+          <div class="reply-box"><b style="font-size:11px;color:var(--accent)">RÉPONSE PRÉPARÉE PAR L'IA</b><p style="margin-top:6px;line-height:1.55">Bonjour Léa, félicitations pour votre mariage ! 🎉 Oui, nous privatisons le food truck pour les mariages : cuisine thaï fraîche préparée sur place par notre cheffe, formules de 15 à 19 € par personne selon le menu. Le 12 septembre est disponible. Je vous envoie notre brochure traiteur, et si vous le souhaitez on s'appelle cette semaine pour affiner le devis ?</p></div>
+          <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button class="btn primary" data-send="Réponse envoyée à Léa M. ✓">Envoyer</button><button class="btn ghost demo">Modifier</button><button class="btn ghost" data-goto="prospects">Voir la fiche prospect créée →</button></div>
+          <p class="muted" style="margin-top:10px">✓ Fiche prospect créée automatiquement : mariage · 12/09 · ~90 pers. · Rambouillet · relance prévue J+3 sans réponse</p>
+        </div>
+        <div class="card" id="pane-m2" style="display:none">
+          <h3>Karim B. · Facebook <span class="tag sensible">Message sensible : allergie</span></h3>
+          <p class="small" style="background:#f1f0ec;border-radius:10px;padding:10px 12px;line-height:1.5">« Bonjour, mon fils est allergique à l'arachide. Est-ce que votre pad thaï en contient ? »</p>
+          <div class="reply-box" style="border-color:var(--critical)"><b style="font-size:11px;color:var(--critical)">RÉPONSE PROPOSÉE — ENVOI BLOQUÉ SANS VALIDATION HUMAINE</b><p style="margin-top:6px;line-height:1.55">Bonjour Karim, merci pour votre question importante. Notre pad thaï contient traditionnellement des cacahuètes, et elles sont présentes dans notre cuisine : nous ne pouvons pas garantir l'absence totale de traces. Pour la sécurité de votre fils, nous vous conseillons de nous en parler directement au comptoir, l'équipe vous orientera vers les plats les plus adaptés.</p></div>
+          <div style="display:flex;gap:8px;margin-top:10px"><button class="btn primary" data-send="Réponse validée et envoyée à Karim B. ✓">Valider et envoyer</button><button class="btn ghost demo">Modifier</button></div>
+          <p class="muted" style="margin-top:10px">Règle appliquée : allergie → jamais de réponse automatique, quel que soit le mode</p>
+        </div>
+        <div class="card" id="pane-m3" style="display:none">
+          <h3>Sophie R. · Instagram <span class="tag auto">Répondu automatiquement</span></h3>
+          <p class="small" style="background:#f1f0ec;border-radius:10px;padding:10px 12px">« Vous êtes où aujourd'hui ? »</p>
+          <div class="reply-box"><b style="font-size:11px;color:var(--goodtext)">ENVOYÉE À 9H14 (RÈGLE : QUESTION SIMPLE + DONNÉE FIABLE)</b><p style="margin-top:6px;line-height:1.55">Bonjour Sophie ! Aujourd'hui nous sommes à Montigny-le-Bretonneux ce midi (11h30-14h) et au campus HEC ce soir à partir de 18h30. À tout à l'heure ! 🍜</p></div>
+          <p class="muted" style="margin-top:10px">Source : calendrier des emplacements · fenêtre de réponse Meta respectée (24 h)</p>
+        </div>
+        <div class="card" id="pane-m4" style="display:none">
+          <h3>Avis Google 5★ <span class="tag avis">Avis</span></h3>
+          <p class="small" style="background:#f1f0ec;border-radius:10px;padding:10px 12px">« Le meilleur thaï du 91, le crousty est incroyable et l'équipe adorable. »</p>
+          <div class="reply-box"><b style="font-size:11px;color:var(--accent)">RÉPONSE PRÉPARÉE</b><p style="margin-top:6px;line-height:1.55">Merci beaucoup ! Le Crousty Thaï est la fierté de notre cheffe, votre message va lui faire très plaisir. À très vite au camion ! 🙏</p></div>
+          <div style="display:flex;gap:8px;margin-top:10px"><button class="btn primary" data-send="Réponse publiée sur Google ✓">Publier la réponse</button><button class="btn ghost demo">Modifier</button></div>
+          <p class="muted" style="margin-top:10px">Suggestion : cet avis peut devenir un carrousel « avis client » jeudi prochain → <b>ajouter au planning</b></p>
+        </div>
+        <div class="card" id="pane-m5" style="display:none">
+          <h3>Tom D. · Instagram <span class="tag auto">Répondu automatiquement</span></h3>
+          <p class="small" style="background:#f1f0ec;border-radius:10px;padding:10px 12px">« Avez-vous des plats végétariens ? »</p>
+          <div class="reply-box"><b style="font-size:11px;color:var(--goodtext)">ENVOYÉE HIER À 15H02</b><p style="margin-top:6px;line-height:1.55">Bonjour Tom ! Oui : pad thaï veggie (12 €), nems légumes (6 €) et notre Zen Bowl (12 €). Tout est préparé minute. 🌱</p></div>
+          <p class="muted" style="margin-top:10px">Source : carte et prix du profil de marque</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== PROSPECTS ========== -->
+  <section class="screen" id="prospects">
+    <div class="row cols-4" style="margin-bottom:16px">
+      <div class="kpi"><div class="lbl">Demandes ce mois</div><div class="val">7</div><div class="delta up">▲ +3 vs juillet</div></div>
+      <div class="kpi"><div class="lbl">Devis envoyés</div><div class="val">3</div><div class="delta neutral">2 en attente de réponse</div></div>
+      <div class="kpi"><div class="lbl">Gagnés (2026)</div><div class="val">11</div><div class="delta up">≈ 14 200 € de CA événementiel</div></div>
+      <div class="kpi"><div class="lbl">Relances automatiques</div><div class="val">2</div><div class="delta neutral">prévues cette semaine</div></div>
+    </div>
+    <div class="pipe">
+      <div class="col"><h4>Nouveau <span>2</span></h4>
+        <div class="lead"><b>💍 Léa M. — Mariage</b><br>12 sept. · ~90 pers. · Rambouillet<br><span class="muted">Via Instagram DM · détecté auto</span></div>
+        <div class="lead"><b>🎂 Marc T. — Anniversaire</b><br>Date à préciser · 40 pers.<br><span class="muted">Via Facebook · relance J+3 programmée</span></div>
+      </div>
+      <div class="col"><h4>Qualifié <span>1</span></h4>
+        <div class="lead"><b>🏢 Digiteo — Événement d'entreprise</b><br>25 sept. · 150 pers. · Saclay<br>Budget : ~2 800 €<br><span class="muted">Appel fait · devis à envoyer</span></div>
+      </div>
+      <div class="col"><h4>Devis envoyé <span>2</span></h4>
+        <div class="lead"><b>💍 Mariage Chevreuse</b><br>19 sept. · 120 pers. · 2 280 €<br><span class="muted">Envoyé il y a 4 j · relance auto demain</span></div>
+        <div class="lead"><b>🎓 BDE HEC — Soirée rentrée</b><br>10 sept. · 200 pers. · 3 000 €<br><span class="muted">Envoyé hier</span></div>
+      </div>
+      <div class="col"><h4>Gagné <span>1</span></h4>
+        <div class="lead" style="border-color:#bfe3cf;background:#f2faf5"><b>🏢 Séminaire Inria</b><br>5 sept. · 80 pers. · 1 520 €<br><span class="muted">Confirmé · acompte reçu</span></div>
+      </div>
+    </div>
+  </section>
+  <!-- ========== ANALYSE ========== -->
+  <section class="screen" id="analyse">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+      <div class="tabs" style="margin-bottom:0" id="period-tabs">
+        <button data-period="p7">7 jours</button><button class="on" data-period="p30">30 jours</button><button data-period="p90">90 jours</button><button data-period="pan">Année</button>
+      </div>
+      <span class="muted" id="period-label">2 juillet – 1 août 2026 · Instagram, Facebook, TikTok, Google</span>
+      <button class="btn ghost demo" style="margin-left:auto">Exporter le rapport</button>
+    </div>
+    <div class="row cols-4">
+      <div class="kpi"><div class="lbl">Vues totales</div><div class="val" id="k-vues">48 620</div><div class="delta up" id="k-vues-d">▲ +32 % vs juin</div></div>
+      <div class="kpi"><div class="lbl">Comptes touchés</div><div class="val" id="k-reach">19 340</div><div class="delta up" id="k-reach-d">▲ +21 %</div></div>
+      <div class="kpi"><div class="lbl">Taux d'engagement</div><div class="val" id="k-eng">6,8 %</div><div class="delta up" id="k-eng-d">▲ +1,2 pt</div></div>
+      <div class="kpi"><div class="lbl">Nouveaux abonnés</div><div class="val" id="k-abo">+342</div><div class="delta up" id="k-abo-d">▲ +58 % · record</div></div>
+    </div>
+    <div class="card" style="margin-bottom:14px">
+      <h3 id="line-title">Vues par jour <small>· tous réseaux · les pics correspondent aux Reels de préparation</small></h3>
+      <div class="chart-wrap" id="chart-line"></div>
+    </div>
+    <div class="row cols-2">
+      <div class="card">
+        <h3>Vues moyennes par publication, selon le format</h3>
+        <div class="chart-wrap" id="chart-format"></div>
+        <p class="muted" style="margin-top:8px">Les Reels font ×3,2 par rapport aux posts image. Le planning de septembre passe de 6 à 9 Reels.</p>
+      </div>
+      <div class="card">
+        <h3>Vues par réseau <small>· 30 jours</small></h3>
+        <div class="chart-wrap" id="chart-network"></div>
+        <div class="legend" id="legend-network"></div>
+      </div>
+    </div>
+    <div class="row cols-2">
+      <div class="card">
+        <h3>Meilleurs créneaux de publication <small>· vues médianes par heure d'envoi</small></h3>
+        <div class="chart-wrap" id="chart-heat"></div>
+        <p class="muted" style="margin-top:8px">Dimanche 18h (planning de semaine) et mercredi 12h (Reels) sont vos meilleurs créneaux.</p>
+      </div>
+      <div class="card">
+        <h3>Recommandations de l'IA <small>· appliquées au planning de septembre après votre accord</small></h3>
+        <div class="reco"><span class="ic">🎬</span><div>Les vidéos montrant la <b>préparation du Crousty Thaï</b> génèrent 3 fois plus de vues que les affiches. Proposition : +3 Reels de préparation en septembre.</div></div>
+        <div class="reco"><span class="ic">🕕</span><div>Vos posts publiés <b>avant 11h30</b> font +40 % de vues les jours de marché : les annonces de lieu seront avancées à 9h00.</div></div>
+        <div class="reco"><span class="ic">⭐</span><div>Les <b>carrousels d'avis clients</b> ont le meilleur taux d'enregistrement : un par semaine sera maintenu.</div></div>
+        <div class="reco"><span class="ic">🧋</span><div>Le contenu <b>Bubble Tea</b> surperforme auprès des 18-24 ans : il portera la campagne « Rentrée HEC ».</div></div>
+      </div>
+    </div>
+    <div class="row cols-2">
+      <div class="card">
+        <h3>Ventes et retour sur investissement <small>· caisse Clyo connectée</small></h3>
+        <div class="row cols-2" style="margin-bottom:10px">
+          <div class="kpi" style="border:none;background:#f2f8f6"><div class="lbl">CA corrélé aux publications (30 j)</div><div class="val" style="font-size:20px">≈ 1 840 €</div><div class="delta neutral">fenêtres avant/après, corrélation prudente</div></div>
+          <div class="kpi" style="border:none;background:#f2f8f6"><div class="lbl">Effet du Reel Crousty du 9/7</div><div class="val" style="font-size:20px">+31 %</div><div class="delta neutral">de Crousty vendus sur 3 jours</div></div>
+        </div>
+        <table class="data">
+          <thead><tr><th>Produit</th><th class="num">Mises en avant</th><th class="num">Vues</th><th class="num">Ventes 30 j</th><th class="num">Évolution</th></tr></thead>
+          <tbody>
+            <tr><td>Crousty Thaï</td><td class="num">6</td><td class="num">15 390</td><td class="num">412</td><td class="num" style="color:var(--goodtext)">▲ +18 %</td></tr>
+            <tr><td>Bubble Tea</td><td class="num">5</td><td class="num">7 210</td><td class="num">655</td><td class="num" style="color:var(--goodtext)">▲ +24 %</td></tr>
+            <tr><td>Pad Thaï</td><td class="num">2</td><td class="num">2 480</td><td class="num">238</td><td class="num" style="color:var(--ink-3)">= stable</td></tr>
+            <tr><td>Nems</td><td class="num">0</td><td class="num">—</td><td class="num">96</td><td class="num" style="color:var(--critical)">▼ −11 %</td></tr>
+          </tbody>
+        </table>
+        <div class="reco" style="margin-top:10px"><span class="ic">🛎</span><div>Les <b>nems</b> baissent et n'ont eu aucune mise en avant : 2 contenus nems sont proposés dans le planning de la semaine prochaine.</div></div>
+      </div>
+      <div class="card">
+        <h3>Rapport mensuel <small>· généré automatiquement, prêt à envoyer</small></h3>
+        <div style="border:1px solid var(--grid);border-radius:10px;padding:14px;background:#fafaf8">
+          <b style="font-size:14px">Chana Thaï · Bilan juillet 2026</b>
+          <p class="small" style="margin-top:8px;line-height:1.65">48 620 vues (+32 %) · 342 nouveaux abonnés (record) · 26 publications, 0 erreur factuelle · ≈ 1 840 € de ventes corrélées · 2 devis événementiels signés (3 800 €) · meilleur contenu : Reel « cuisson du Crousty » (8 470 vues).<br><b>Plan d'août :</b> festivals, privatisations, +3 Reels de préparation, campagne bubble tea.</p>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+          <button class="btn primary" onclick="toast('Rapport envoyé par email au client (démo)')">Envoyer au client</button>
+          <button class="btn ghost demo">Télécharger en PDF</button>
+          <button class="btn ghost demo">Personnaliser (marque blanche)</button>
+        </div>
+        <p class="muted" style="margin-top:10px">En plan agence : envoyé automatiquement à chaque client le 1ᵉʳ du mois, à vos couleurs.</p>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Top publications du mois <small>· triées par vues</small></h3>
+      <table class="data">
+        <thead><tr><th></th><th>Publication</th><th>Format</th><th>Réseau</th><th>Date</th><th class="num">Vues</th><th class="num">J'aime</th><th class="num">Partages</th><th class="num">Engagement</th></tr></thead>
+        <tbody>
+          <tr><td><div class="thumb g1">🍗</div></td><td><b>Crousty Thaï : la cuisson en gros plan</b></td><td><span class="pill reel">Reel</span></td><td><span class="net">Instagram</span></td><td>9 juil.</td><td class="num">8 470</td><td class="num">612</td><td class="num">104</td><td class="num">9,4 %</td></tr>
+          <tr><td><div class="thumb g5">👩‍🍳</div></td><td><b>La cheffe prépare le Panang</b></td><td><span class="pill reel">Reel</span></td><td><span class="net">TikTok</span></td><td>16 juil.</td><td class="num">6 920</td><td class="num">488</td><td class="num">96</td><td class="num">8,7 %</td></tr>
+          <tr><td><div class="thumb g6">🧋</div></td><td><b>Bubble Tea : le duo de l'été</b></td><td><span class="pill post">Post</span></td><td><span class="net">Instagram</span></td><td>22 juil.</td><td class="num">3 180</td><td class="num">241</td><td class="num">38</td><td class="num">7,6 %</td></tr>
+          <tr><td><div class="thumb g3">⭐</div></td><td><b>« Le meilleur thaï du 91 » : vos avis</b></td><td><span class="pill carrousel">Carrousel</span></td><td><span class="net">Instagram</span></td><td>18 juil.</td><td class="num">2 640</td><td class="num">198</td><td class="num">57</td><td class="num">8,1 %</td></tr>
+          <tr><td><div class="thumb g2">🚚</div></td><td><b>Festival de Chevreuse : on y est !</b></td><td><span class="pill story">Story</span></td><td><span class="net">Instagram</span></td><td>12 juil.</td><td class="num">1 890</td><td class="num">122</td><td class="num">31</td><td class="num">6,2 %</td></tr>
+          <tr><td><div class="thumb g4">📍</div></td><td><b>Cette semaine : vos emplacements</b></td><td><span class="pill post">Post</span></td><td><span class="net">Facebook</span></td><td>27 juil.</td><td class="num">1 460</td><td class="num">96</td><td class="num">44</td><td class="num">5,8 %</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ========== PARAMETRES ========== -->
+  <section class="screen" id="parametres">
+    <div class="card" style="margin-bottom:14px">
+      <h3>Niveau d'automatisation</h3>
+      <div class="radio-modes">
+        <div class="mode-opt"><b>Assisté</b><span>L'IA crée les contenus, vous validez tout avant publication.</span></div>
+        <div class="mode-opt sel"><b>Semi-automatique ✓</b><span>Les publications classiques partent automatiquement. Promotions, prix et sujets sensibles attendent votre accord.</span></div>
+        <div class="mode-opt"><b>Autonome</b><span>Planning, création et publication automatiques dans les limites définies ci-dessous.</span></div>
+      </div>
+    </div>
+    <div class="row cols-2">
+      <div class="card">
+        <h3>Règles de validation</h3>
+        <div class="setrow"><div class="t"><b>Promotions et offres</b><span>Toute réduction ou offre limitée</span></div><div class="switch on"></div></div>
+        <div class="setrow"><div class="t"><b>Changements de prix</b><span>Tout contenu mentionnant un prix modifié</span></div><div class="switch on"></div></div>
+        <div class="setrow"><div class="t"><b>Messages sensibles</b><span>Allergies, réclamations, incidents : toujours validés (non désactivable)</span></div><div class="switch on" style="opacity:.45;pointer-events:none"></div></div>
+        <div class="setrow"><div class="t"><b>Nouveaux emplacements</b><span>Lieu jamais annoncé auparavant</span></div><div class="switch on"></div></div>
+        <div class="setrow"><div class="t"><b>Réponses aux avis négatifs</b><span>Avis 3★ et moins</span></div><div class="switch on"></div></div>
+        <div class="setrow"><div class="t"><b>Mode vacances</b><span>Suspend les générations, publie uniquement le déjà-validé</span></div><div class="switch"></div></div>
+      </div>
+      <div class="card">
+        <h3>Comptes connectés</h3>
+        <div class="setrow"><div class="t"><b>Instagram — @chanathai</b><span>Publication + commentaires + messages</span></div><span class="check">✓ Connecté</span></div>
+        <div class="setrow"><div class="t"><b>Facebook — Chana Thaï</b><span>Publication + Messenger</span></div><span class="check">✓ Connecté</span></div>
+        <div class="setrow"><div class="t"><b>Google Business Profile</b><span>Posts + avis (2 établissements)</span></div><span class="check">✓ Connecté</span></div>
+        <div class="setrow"><div class="t"><b>TikTok — @chanathai</b><span>Publication de Reels</span></div><span class="check">✓ Connecté</span></div>
+        <div class="setrow"><div class="t"><b>LinkedIn</b><span>Communication traiteur entreprises</span></div><button class="btn ghost demo">Connecter</button></div>
+        <div class="setrow"><div class="t"><b>Threads</b><span></span></div><button class="btn ghost demo">Connecter</button></div>
+      </div>
+    </div>
+  </section>
+
+<div class="overlay" id="overlay"><div class="modal"><div class="modal-head"><h3 id="modal-title"></h3><button class="mx" onclick="closeModal()">✕</button></div><div id="modal-body"></div></div></div>
+<div id="toast"></div>
+<script>
+/* ---------- Navigation ---------- */
+const titles={dashboard:"Tableau de bord",calendrier:"Calendrier éditorial",emplacements:"Emplacements et tournées",studio:"Studio de création",design:"Design haute qualité",bibliotheque:"Bibliothèque de médias",validation:"Publications à valider",inbox:"Boîte de réception sociale",prospects:"Prospects et devis",analyse:"Analyse des performances",seo:"SEO et visibilité moteurs IA",parametres:"Paramètres de la marque"};
+function go(id){
+  document.querySelectorAll(".screen").forEach(s=>s.classList.toggle("active",s.id===id));
+  document.querySelectorAll(".nav-item").forEach(n=>n.classList.toggle("active",n.dataset.screen===id));
+  document.getElementById("screen-title").textContent=titles[id]||id;
+  window.scrollTo(0,0);
+  if(id==="analyse"&&!chartsDone){drawCharts();chartsDone=true;}
+}
+document.querySelectorAll(".nav-item").forEach(n=>n.addEventListener("click",()=>go(n.dataset.screen)));
+document.querySelectorAll("[data-goto]").forEach(b=>b.addEventListener("click",()=>go(b.dataset.goto)));
+
+/* ---------- Calendar tabs ---------- */
+document.querySelectorAll("#cal-tabs button").forEach(b=>b.addEventListener("click",()=>{
+  document.querySelectorAll("#cal-tabs button").forEach(x=>x.classList.remove("on"));b.classList.add("on");
+  ["cal-semaine","cal-mois","cal-annee"].forEach(id=>document.getElementById(id).style.display=id===b.dataset.cal?"":"none");
+}));
+
+/* ---------- Validation ---------- */
+document.querySelectorAll("[data-approve]").forEach(b=>b.addEventListener("click",()=>{
+  const card=document.getElementById(b.dataset.approve);
+  card.querySelectorAll(".acts .btn").forEach(x=>x.style.display="none");
+  card.querySelector(".state-ok").style.display="inline-block";
+  card.style.opacity=".72";
+  const badge=document.getElementById("badge-valid");
+  badge.textContent=Math.max(0,parseInt(badge.textContent)-1);
+  if(badge.textContent==="0")badge.style.display="none";
+}));
+
+/* ---------- Inbox ---------- */
+document.querySelectorAll(".msg").forEach(m=>m.addEventListener("click",()=>{
+  document.querySelectorAll(".msg").forEach(x=>x.classList.remove("sel"));m.classList.add("sel");
+  ["m1","m2","m3","m4","m5"].forEach(id=>document.getElementById("pane-"+id).style.display=id===m.dataset.msg?"":"none");
+}));
+
+/* ---------- Settings ---------- */
+document.querySelectorAll(".switch").forEach(s=>s.addEventListener("click",()=>s.classList.toggle("on")));
+document.querySelectorAll(".mode-opt").forEach(o=>o.addEventListener("click",()=>{
+  document.querySelectorAll(".mode-opt").forEach(x=>x.classList.remove("sel"));o.classList.add("sel");
+}));
+document.getElementById("btn-generate").addEventListener("click",function(){this.textContent="✓ Déclinaisons générées (démo)";});
+
+/* ---------- Charts ---------- */
+let chartsDone=false;
+const INK2="#52514e",INK3="#898781",GRID="#e1e0d9",BASE="#c3c2b7",S1="#2a78d6",S2="#eb6834",S3="#1baf7a",S4="#eda100";
+const fmtN=n=>n.toLocaleString("fr-FR");
+function tooltip(){let t=document.getElementById("tt");if(!t){t=document.createElement("div");t.id="tt";t.className="tooltip";document.body.appendChild(t);}return t;}
+function showTT(html,x,y){const t=tooltip();t.innerHTML=html;t.style.display="block";t.style.left=(x+14)+"px";t.style.top=(y+14)+"px";}
+function hideTT(){tooltip().style.display="none";}
+
+/* Vues par jour : 30 points (démo) */
+let days=["2/7","3/7","4/7","5/7","6/7","7/7","8/7","9/7","10/7","11/7","12/7","13/7","14/7","15/7","16/7","17/7","18/7","19/7","20/7","21/7","22/7","23/7","24/7","25/7","26/7","27/7","28/7","29/7","30/7","31/7"];
+let views=[820,940,760,1050,880,1120,980,3480,1650,1240,2210,1380,1520,1140,2890,3120,1480,1690,1260,1180,1740,1560,1320,1490,1830,1610,1420,1980,2340,2160];
+let peaks={7:"Reel Crousty Thaï",14:"Reel Panang (TikTok)",15:"Pic TikTok J+1"};
+const D30=days.slice(),V30=views.slice(),P30=Object.assign({},peaks);
+const PERIODS={
+  p7:{days:D30.slice(-7),views:V30.slice(-7),peaks:{5:"Reel du 30/7"},label:"26 juillet – 1 août 2026 · Instagram, Facebook, TikTok, Google",unit:"jour",
+      k:["12 830","6 480","7,1 %","+86"],d:["▲ +9 % vs semaine préc.","▲ +7 %","▲ +0,4 pt","▲ +12 %"]},
+  p30:{days:D30,views:V30,peaks:P30,label:"2 juillet – 1 août 2026 · Instagram, Facebook, TikTok, Google",unit:"jour",
+      k:["48 620","19 340","6,8 %","+342"],d:["▲ +32 % vs juin","▲ +21 %","▲ +1,2 pt","▲ +58 % · record"]},
+  p90:{days:["4/5","11/5","18/5","25/5","1/6","8/6","15/6","22/6","29/6","6/7","13/7","20/7","27/7"],
+      views:[5200,6100,5400,7300,6800,8900,7600,9400,8800,10200,9600,11400,12830],peaks:{5:"Fête de la musique",12:"Reels de juillet"},
+      label:"Mai – juillet 2026 · vues par semaine",unit:"semaine",
+      k:["118 400","44 200","6,1 %","+780"],d:["▲ +41 % vs trim. préc.","▲ +28 %","▲ +0,8 pt","▲ +64 %"]},
+  pan:{days:["Sept","Oct","Nov","Déc","Janv","Févr","Mars","Avr","Mai","Juin","Juil"],
+      views:[14200,16800,19400,22600,18900,21400,24800,27600,30200,34800,48620],peaks:{3:"Marchés de Noël",10:"Été + Reels"},
+      label:"Septembre 2025 – juillet 2026 · vues par mois",unit:"mois",
+      k:["312 000","121 000","5,7 %","+2 140"],d:["▲ +96 % sur un an","▲ +74 %","▲ +0,5 pt","▲ +2 140 abonnés"]}
+};
+
+function drawLine(){
+  const W=1060,H=240,pl=52,pr=14,pt=14,pb=30,iw=W-pl-pr,ih=H-pt-pb;
+  const max=Math.max(1000,Math.ceil(Math.max(...views)*1.08/1000)*1000),x=i=>pl+i*(iw/(views.length-1)),y=v=>pt+ih-(v/max)*ih;
+  let g="";
+  [0,max/4,max/2,3*max/4,max].forEach(v=>{g+=`<line x1="${pl}" x2="${W-pr}" y1="${y(v)}" y2="${y(v)}" stroke="${v===0?BASE:GRID}" stroke-width="1"/><text x="${pl-8}" y="${y(v)+4}" text-anchor="end" font-size="10" fill="${INK3}">${v===0?"0":(Math.round(v/100)/10).toLocaleString("fr-FR")+" k"}</text>`;});
+  let area=`M ${x(0)} ${y(views[0])}`,line=area;
+  views.forEach((v,i)=>{if(i>0){area+=` L ${x(i)} ${y(v)}`;line+=` L ${x(i)} ${y(v)}`;}});
+  area+=` L ${x(views.length-1)} ${y(0)} L ${x(0)} ${y(0)} Z`;
+  const n=views.length;
+  let ticks="";[...new Set([0,Math.round((n-1)/4),Math.round((n-1)/2),Math.round(3*(n-1)/4),n-1])].forEach(i=>{ticks+=`<text x="${x(i)}" y="${H-8}" text-anchor="middle" font-size="10" fill="${INK3}">${days[i]}</text>`;});
+  let dots="";Object.keys(peaks).forEach(i=>{const tx=x(+i),anc=tx>W-64?"end":(tx<pl+30?"start":"middle");dots+=`<circle cx="${tx}" cy="${y(views[+i])}" r="4" fill="${S1}" stroke="#fcfcfb" stroke-width="2"/><text x="${tx}" y="${y(views[+i])-10}" text-anchor="${anc}" font-size="10" font-weight="600" fill="${INK2}">${fmtN(views[+i])}</text>`;});
+  const el=document.getElementById("chart-line");
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;display:block">${g}<path d="${area}" fill="${S1}" opacity="0.10"/><path d="${line}" fill="none" stroke="${S1}" stroke-width="2" stroke-linejoin="round"/>${dots}${ticks}<line id="xh" y1="${pt}" y2="${pt+ih}" stroke="${BASE}" stroke-width="1" stroke-dasharray="3 3" visibility="hidden"/><circle id="xhd" r="4.5" fill="${S1}" stroke="#fcfcfb" stroke-width="2" visibility="hidden"/><rect x="${pl}" y="${pt}" width="${iw}" height="${ih}" fill="transparent" id="line-hit"/></svg>`;
+  const svg=el.querySelector("svg"),hit=el.querySelector("#line-hit"),xh=el.querySelector("#xh"),xhd=el.querySelector("#xhd");
+  hit.addEventListener("mousemove",e=>{
+    const r=svg.getBoundingClientRect(),sx=W/r.width;
+    const px=(e.clientX-r.left)*sx;
+    const i=Math.max(0,Math.min(views.length-1,Math.round((px-pl)/(iw/(views.length-1)))));
+    xh.setAttribute("x1",x(i));xh.setAttribute("x2",x(i));xh.setAttribute("visibility","visible");
+    xhd.setAttribute("cx",x(i));xhd.setAttribute("cy",y(views[i]));xhd.setAttribute("visibility","visible");
+    showTT(`<b>${fmtN(views[i])} vues</b>${days[i]}${peaks[i]?" · "+peaks[i]:""}`,e.clientX+window.scrollX,e.clientY+window.scrollY);
+  });
+  hit.addEventListener("mouseleave",()=>{xh.setAttribute("visibility","hidden");xhd.setAttribute("visibility","hidden");hideTT();});
+}
+
+/* Vues moyennes par format : barres horizontales, un seul ton (même mesure) */
+function drawFormat(){
+  const data=[["Reel",2840],["Carrousel",1240],["Post",890],["Story",610]];
+  const W=500,rowH=40,H=data.length*rowH+8,pl=88,pr=64,iw=W-pl-pr,max=3000;
+  let s="";
+  data.forEach((d,i)=>{
+    const yy=i*rowH+10,bw=Math.max(4,d[1]/max*iw);
+    s+=`<text x="${pl-10}" y="${yy+13}" text-anchor="end" font-size="11.5" fill="${INK2}">${d[0]}</text>`;
+    s+=`<rect class="bar" data-t="<b>${fmtN(d[1])} vues</b>en moyenne par ${d[0]}" x="${pl}" y="${yy}" width="${bw}" height="18" rx="0" fill="${S1}"/><rect x="${pl+bw-4}" y="${yy}" width="4" height="18" rx="2" fill="${S1}"/>`;
+    s+=`<text x="${pl+bw+8}" y="${yy+13}" font-size="11.5" font-weight="700" fill="#0b0b0b">${fmtN(d[1])}</text>`;
+  });
+  s+=`<line x1="${pl}" x2="${pl}" y1="4" y2="${H-4}" stroke="${BASE}" stroke-width="1"/>`;
+  document.getElementById("chart-format").innerHTML=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;display:block">${s}</svg>`;
+}
+
+/* Vues par réseau : catégoriel, 4 slots validés + labels directs */
+function drawNetwork(){
+  const data=[["Instagram",26400,S1],["TikTok",13100,S2],["Facebook",6300,S3],["Google",2820,S4]];
+  const W=500,rowH=40,H=data.length*rowH+8,pl=88,pr=70,iw=W-pl-pr,max=28000;
+  let s="";
+  data.forEach((d,i)=>{
+    const yy=i*rowH+10,bw=Math.max(4,d[1]/max*iw);
+    s+=`<text x="${pl-10}" y="${yy+13}" text-anchor="end" font-size="11.5" fill="${INK2}">${d[0]}</text>`;
+    s+=`<rect class="bar" data-t="<b>${fmtN(d[1])} vues</b>${d[0]} · 30 jours" x="${pl}" y="${yy}" width="${bw}" height="18" fill="${d[2]}"/><rect x="${pl+bw-4}" y="${yy}" width="4" height="18" rx="2" fill="${d[2]}"/>`;
+    s+=`<text x="${pl+bw+8}" y="${yy+13}" font-size="11.5" font-weight="700" fill="#0b0b0b">${fmtN(d[1])}</text>`;
+  });
+  s+=`<line x1="${pl}" x2="${pl}" y1="4" y2="${H-4}" stroke="${BASE}" stroke-width="1"/>`;
+  document.getElementById("chart-network").innerHTML=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;display:block">${s}</svg>`;
+  document.getElementById("legend-network").innerHTML=data.map(d=>`<span><span class="sw" style="background:${d[2]}"></span>${d[0]}</span>`).join("");
+}
+
+/* Heatmap créneaux : séquentiel bleu */
+function drawHeat(){
+  const jours=["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"];
+  const heures=["9h","11h","12h","15h","18h","20h"];
+  const vals=[
+    [420,780,910,380,520,610],[510,960,1040,410,570,640],[480,890,2350,430,690,720],
+    [450,820,980,400,1380,660],[560,1290,1180,470,760,690],[610,1010,1210,520,830,750],[380,640,880,460,2680,1240]];
+  const ramp=["#cde2fb","#9ec5f4","#6da7ec","#3987e5","#256abf","#184f95","#0d366b"];
+  const max=2700,cw=52,ch=30,pl=44,pt=22;
+  let s="";
+  heures.forEach((h,j)=>{s+=`<text x="${pl+j*cw+cw/2}" y="${pt-8}" text-anchor="middle" font-size="10" fill="${INK3}">${h}</text>`;});
+  jours.forEach((jr,i)=>{
+    s+=`<text x="${pl-8}" y="${pt+i*ch+ch/2+4}" text-anchor="end" font-size="10.5" fill="${INK2}">${jr}</text>`;
+    heures.forEach((h,j)=>{
+      const v=vals[i][j],c=ramp[Math.min(ramp.length-1,Math.floor(v/max*ramp.length))];
+      s+=`<rect class="bar" data-t="<b>${fmtN(v)} vues médianes</b>${jr} ${h}" x="${pl+j*cw}" y="${pt+i*ch}" width="${cw-2}" height="${ch-2}" rx="4" fill="${c}"/>`;
+    });
+  });
+  const W=pl+heures.length*cw+10,H=pt+jours.length*ch+26;
+  let lg=`<text x="${pl}" y="${H-6}" font-size="10" fill="${INK3}">moins de vues</text>`;
+  ramp.forEach((c,i)=>{lg+=`<rect x="${pl+92+i*16}" y="${H-16}" width="14" height="10" rx="2" fill="${c}"/>`;});
+  lg+=`<text x="${pl+92+ramp.length*16+6}" y="${H-6}" font-size="10" fill="${INK3}">plus de vues</text>`;
+  document.getElementById("chart-heat").innerHTML=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:480px;display:block">${s}${lg}</svg>`;
+}
+
+function bindBarTT(){
+  document.querySelectorAll("rect.bar").forEach(r=>{
+    r.addEventListener("mousemove",e=>showTT(r.dataset.t,e.clientX+window.scrollX,e.clientY+window.scrollY));
+    r.addEventListener("mouseleave",hideTT);
+  });
+}
+function drawCharts(){drawLine();drawFormat();drawNetwork();drawHeat();bindBarTT();}
+
+/* ---------- Modal & toast ---------- */
+function openModal(title,html){document.getElementById("modal-title").innerHTML=title;document.getElementById("modal-body").innerHTML=html;document.getElementById("overlay").classList.add("show");}
+function closeModal(){document.getElementById("overlay").classList.remove("show");}
+document.getElementById("overlay").addEventListener("click",e=>{if(e.target.id==="overlay")closeModal();});
+let toastTimer=null;
+function toast(msg){const t=document.getElementById("toast");t.textContent=msg;t.style.display="block";clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.style.display="none",2600);}
+
+/* Boutons de démonstration (fonction prévue dans la version finale) */
+document.querySelectorAll(".btn.demo").forEach(b=>b.addEventListener("click",()=>toast("Démo : « "+b.textContent.trim()+" » sera actif dans la version développée")));
+
+/* ---------- Slots du calendrier ---------- */
+document.querySelectorAll(".slot").forEach(s=>s.addEventListener("click",()=>{
+  const pill=s.querySelector(".pill"),titre=s.querySelector("b"),obj=s.querySelector(".obj");
+  openModal((titre?titre.textContent:"Contenu")+" <span class='pill "+(pill?pill.className.replace("pill ",""):"post")+"'>"+(pill?pill.textContent:"")+"</span>",
+    "<p class='small' style='line-height:1.6'>Objectif : <b>"+(obj?obj.textContent:"")+"</b><br>Généré depuis le planning mensuel « Été gourmand ».<br><br>Texte, visuel et variantes seront préparés automatiquement 48 h avant la date de publication, puis passeront par les contrôles (prix, lieu, charte, répétition).</p>"+
+    "<div style='display:flex;gap:8px;margin-top:14px'><button class='btn primary' onclick=\"closeModal();go('studio')\">Ouvrir dans le studio</button><button class='btn ghost' onclick='closeModal();toast(\"Slot déplacé à jeudi (démo)\")'>Déplacer</button><button class='btn danger' onclick='closeModal();toast(\"Slot supprimé du planning (démo)\")'>Supprimer</button></div>");
+}));
+
+/* ---------- Périodes de l'analyse ---------- */
+document.querySelectorAll("#period-tabs button").forEach(b=>b.addEventListener("click",()=>{
+  document.querySelectorAll("#period-tabs button").forEach(x=>x.classList.remove("on"));b.classList.add("on");
+  const P=PERIODS[b.dataset.period];
+  days=P.days;views=P.views;peaks=P.peaks;
+  drawLine();
+  document.getElementById("period-label").textContent=P.label;
+  document.getElementById("line-title").innerHTML="Vues par "+P.unit+" <small>· tous réseaux · survolez la courbe pour le détail</small>";
+  ["k-vues","k-reach","k-eng","k-abo"].forEach((id,i)=>document.getElementById(id).textContent=P.k[i]);
+  ["k-vues-d","k-reach-d","k-eng-d","k-abo-d"].forEach((id,i)=>document.getElementById(id).textContent=P.d[i]);
+}));
+
+/* ---------- Filtres bibliothèque ---------- */
+document.querySelectorAll("#lib-filters [data-filter]").forEach(b=>b.addEventListener("click",()=>{
+  document.querySelectorAll("#lib-filters [data-filter]").forEach(x=>{x.style.background="";x.style.color="";});
+  b.style.background="#12211c";b.style.color="#fff";
+  const f=b.dataset.filter;
+  document.querySelectorAll(".media").forEach(m=>{m.style.display=(f==="tous"||(m.dataset.tags||"").includes(f))?"":"none";});
+}));
+document.querySelectorAll(".media").forEach(m=>m.addEventListener("click",()=>{
+  const t=m.querySelector(".minfo b").textContent;
+  openModal(t,"<p class='small' style='line-height:1.6'>Étiquettes IA : <b>"+(m.dataset.tags||"")+"</b><br>Ajoutée par l'équipe depuis le mobile.<br><br>Utilisable pour : Story, Post, Reel, visuel Google.</p><div style='display:flex;gap:8px;margin-top:14px'><button class='btn primary' onclick=\"closeModal();go('studio')\">Créer un contenu avec ce média</button><button class='btn ghost' onclick='closeModal();toast(\"Étiquettes modifiées (démo)\")'>Modifier les étiquettes</button></div>");
+}));
+
+/* ---------- Studio : variantes de légende ---------- */
+const CAPS={
+  regen:["「 On l'a renommé « le croustillant qui rend accro ». Crousty Thaï, sauce coco combava, fait minute au camion. À tout à l'heure ! 」<div class='muted' style='margin-top:6px'>Nouvelle variante · ton convivial</div>",
+         "「 Le secret du Crousty Thaï ? La cheffe le fait mariner depuis ce matin. Résultat à découvrir aujourd'hui au camion 😋 」<div class='muted' style='margin-top:6px'>Nouvelle variante · storytelling</div>"],
+  court:["「 Crousty Thaï, fait minute, encore chaud. On vous attend 🍗 」<div class='muted' style='margin-top:6px'>Variante courte</div>"],
+  commercial:["「 Le best-seller est là : Crousty Thaï 13 €, formule plat + bubble tea 19 €. Aujourd'hui à Montigny, ce soir à HEC. On vous en garde un ? 」<div class='muted' style='margin-top:6px'>Variante commerciale · prix vérifiés ✓</div>"],
+  prix:["「 Crousty Thaï 13 € · menu entrée + plat 16 € · plat + bubble tea 19 €. Fait minute par notre cheffe, comme à Bangkok 🍜 」<div class='muted' style='margin-top:6px'>Variante avec prix · conformes à la carte ✓</div>"]
+};
+let regenIdx=0;
+document.querySelectorAll("[data-cap]").forEach(b=>b.addEventListener("click",()=>{
+  const k=b.dataset.cap,list=CAPS[k],html=k==="regen"?list[regenIdx++%list.length]:list[0];
+  document.getElementById("cap-main").innerHTML=html;
+  toast("Légende régénérée ✓");
+}));
+
+/* ---------- Validation : refuser / modifier ---------- */
+document.querySelectorAll("[data-reject]").forEach(b=>b.addEventListener("click",()=>{
+  const card=document.getElementById(b.dataset.reject);
+  card.querySelectorAll(".acts .btn").forEach(x=>x.style.display="none");
+  card.querySelector(".state-no").style.display="inline-block";
+  card.style.opacity=".62";
+  const badge=document.getElementById("badge-valid");
+  badge.textContent=Math.max(0,parseInt(badge.textContent)-1);
+  if(badge.textContent==="0")badge.style.display="none";
+  toast("Contenu refusé — l'IA proposera un remplacement");
+}));
+document.querySelectorAll("[data-edit]").forEach(b=>b.addEventListener("click",()=>{
+  const card=document.getElementById(b.dataset.edit);
+  const p=card.querySelector(".body p");
+  openModal("Modifier le texte","<textarea id='edit-ta'>"+p.textContent.trim()+"</textarea><div style='display:flex;gap:8px'><button class='btn primary' id='edit-save'>Enregistrer</button><button class='btn ghost' onclick='closeModal()'>Annuler</button></div><p class='muted' style='margin-top:10px'>Le texte repassera par les contrôles (prix, lieu, orthographe) avant programmation.</p>");
+  document.getElementById("edit-save").addEventListener("click",()=>{
+    p.textContent=document.getElementById("edit-ta").value;
+    closeModal();toast("Texte modifié — contrôles repassés ✓");
+  });
+}));
+
+/* ---------- Inbox : envoi ---------- */
+document.querySelectorAll("[data-send]").forEach(b=>b.addEventListener("click",()=>{
+  const row=b.parentElement;
+  row.innerHTML="<span class='state-ok' style='display:inline-block'>✓ "+b.dataset.send+"</span>";
+  toast(b.dataset.send);
+}));
+
+/* ---------- Prospects : fiches ---------- */
+document.querySelectorAll(".lead").forEach(l=>l.addEventListener("click",()=>{
+  openModal("Fiche prospect",
+    "<div class='small' style='line-height:1.7'>"+l.innerHTML+"</div><hr style='border:none;border-top:1px solid var(--grid);margin:12px 0'>"+
+    "<p class='small' style='line-height:1.6'>Historique : détecté automatiquement dans la boîte de réception · fiche créée par l'IA · relance automatique programmée.</p>"+
+    "<div style='display:flex;gap:8px;margin-top:14px;flex-wrap:wrap'><button class='btn primary' onclick='closeModal();toast(\"Message de relance préparé (démo)\")'>Relancer maintenant</button><button class='btn ghost' onclick='openDevis()'>Préparer un devis</button><button class='btn ghost' onclick='closeModal();toast(\"Étape mise à jour (démo)\")'>Changer d'étape</button></div>");
+}));
+
+/* ---------- Emplacements modifiables ---------- */
+let EMP=[
+  {jour:"Lundi",midi:{lieu:"Montigny-le-Bretonneux",h:"11h30-14h"},soir:null},
+  {jour:"Mardi",midi:{lieu:"Marché de Gif",h:"11h30-14h"},soir:null},
+  {jour:"Mercredi",midi:{lieu:"Orsay",h:"11h30-14h"},soir:{lieu:"Campus HEC",h:"18h30-22h"}},
+  {jour:"Jeudi",midi:{lieu:"Montigny-le-Bretonneux",h:"11h30-14h"},soir:null},
+  {jour:"Vendredi",midi:{lieu:"Marché de Gif",h:"11h30-14h"},soir:null},
+  {jour:"Samedi",midi:{lieu:"Festival de Chevreuse",h:"11h-23h"},soir:null,note:"tarifs festival",alerte:true},
+  {jour:"Dimanche",midi:null,soir:null}
+];
+function slotTxt(s){return s?s.lieu+" · "+s.h:"—";}
+function renderEmp(){
+  let h='<table class="data"><thead><tr><th>Jour</th><th>Midi</th><th>Soir</th><th>Automatisations</th></tr></thead><tbody>';
+  EMP.forEach((d,i)=>{
+    let badges="";
+    const n=(d.midi?1:0)+(d.soir?1:0);
+    if(d.alerte)badges='<span class="chk warn">⚠ Contenus à générer</span>';
+    else if(n===2)badges='<span class="chk">✓ 2 Stories</span> <span class="chk">✓ Google à jour</span>';
+    else if(n===1)badges='<span class="chk">✓ Story</span> <span class="chk">✓ Google à jour</span>';
+    else badges='<span class="muted">jour sans service</span>';
+    if(d.jour==="Dimanche")badges+=' <span class="chk">✓ Planning semaine 18h</span>';
+    h+=`<tr onclick="editEmp(${i})" style="cursor:pointer"><td><b>${d.jour}</b></td><td>${slotTxt(d.midi)}${d.note?' · '+d.note:''}</td><td>${slotTxt(d.soir)}</td><td>${badges}</td></tr>`;
+  });
+  h+='</tbody></table>';
+  document.getElementById("emp-table").innerHTML=h;
+  renderStory();
+}
+const ST_THEMES=[
+  {n:"Vert Bangkok",bg:"linear-gradient(175deg,#0a3129,#0d4a3a 45%,#0a2e26)",acc:"#f3c04b",ph:"linear-gradient(160deg,#d9a13b,#c8501f 70%)",sw:"#0d4a3a"},
+  {n:"Nuit dorée",bg:"linear-gradient(175deg,#0e1520,#1d2c42 50%,#0b111b)",acc:"#e2b25a",ph:"linear-gradient(160deg,#c8a24a,#7a5716 80%)",sw:"#1d2c42"},
+  {n:"Rose bubble tea",bg:"linear-gradient(175deg,#2a1233,#6e2954 55%,#22101f)",acc:"#ff9ec4",ph:"linear-gradient(160deg,#e0527f,#7b2d5e 80%)",sw:"#a03a6c"},
+  {n:"Piment doux",bg:"linear-gradient(175deg,#4a1206,#8a2f10 55%,#3a0e05)",acc:"#ffcf7a",ph:"linear-gradient(160deg,#f3b13c,#c8501f 75%)",sw:"#8a2f10"}
+];
+const ST_PHOTOS=[["🍜","Pad Thaï wok"],["🍗","Crousty Thaï"],["🧋","Bubble tea"],["👩‍🍳","La cheffe"],["🚚","Le camion"],["🥡","Poké bowl"]];
+let stTheme=0,stPhoto=0;
+function setTheme(i){stTheme=i;renderStory();toast("Thème « "+ST_THEMES[i].n+" » appliqué ✓");}
+function setPhoto(i){stPhoto=i;renderStory();toast("Photo « "+ST_PHOTOS[i][1]+" » choisie ✓");}
+function renderPickers(){
+  const sw=document.getElementById("sw-row"),ph=document.getElementById("ph-row");
+  if(!sw)return;
+  sw.innerHTML=ST_THEMES.map((t,i)=>`<span class="swatch${i===stTheme?" on":""}" style="background:${t.sw}" title="${t.n}" onclick="setTheme(${i})"></span>`).join("");
+  ph.innerHTML=ST_PHOTOS.map((p,i)=>`<span class="photopick${i===stPhoto?" on":""}" title="${p[1]}" onclick="setPhoto(${i})">${p[0]}</span>`).join("");
+}
+function renderStory(){
+  const el=document.getElementById("story-prev");if(!el)return;
+  const T=ST_THEMES[stTheme];
+  let rows="";
+  EMP.forEach(d=>{
+    const lab=d.jour.slice(0,3);
+    if(!d.midi&&!d.soir){rows+=`<div class="sm-day off"><span class="d">${lab}</span><div><b>Repos du camion</b><span>On recharge les woks, à lundi !</span></div></div>`;return;}
+    let b,s;
+    if(d.midi&&d.soir){b=d.midi.lieu+" · "+d.soir.lieu;s=d.midi.h+" puis "+d.soir.h;}
+    else{const x=d.midi||d.soir;b=x.lieu;s=x.h+(d.note?" · "+d.note:"");}
+    const sp=(d.alerte||/festival|open air|événement/i.test(b))?" sp":"";
+    rows+=`<div class="sm-day${sp}"><span class="d">${lab}</span><div><b>${b}${sp?" ✨":""}</b><span>${s}</span></div></div>`;
+  });
+  el.innerHTML=`<div class="story-mini" style="--st-bg:${T.bg};--st-accent:${T.acc};--st-photo:${T.ph}">
+    <div class="sm-photo"><span class="sm-badge">CETTE SEMAINE 📍</span><span class="sm-brand">CHANA THAÏ</span>${ST_PHOTOS[stPhoto][0]}</div>
+    <div class="sm-title">On est <span>où</span> ?</div>
+    <div class="sm-sub">Vos rendez-vous thaï du 3 au 9 août</div>
+    <div class="sm-days">${rows}</div>
+    <div class="sm-foot"><span><b>@chanathai</b> · devis en DM</span><span class="pill-w">foodtruckthai.fr</span></div>
+  </div>`;
+  renderPickers();
+}
+function empForm(d){
+  return `<div class="field"><label>Midi — lieu (vide = pas de service)</label><div class="field-row"><input id="f-ml" value="${d.midi?d.midi.lieu:''}" placeholder="Ex : Marché de Gif"><input id="f-mh" value="${d.midi?d.midi.h:''}" placeholder="11h30-14h"></div></div>
+  <div class="field"><label>Soir — lieu (vide = pas de service)</label><div class="field-row"><input id="f-sl" value="${d.soir?d.soir.lieu:''}" placeholder="Ex : Campus HEC"><input id="f-sh" value="${d.soir?d.soir.h:''}" placeholder="18h30-22h"></div></div>`;
+}
+function readEmpForm(d){
+  const ml=document.getElementById("f-ml").value.trim(),mh=document.getElementById("f-mh").value.trim();
+  const sl=document.getElementById("f-sl").value.trim(),sh=document.getElementById("f-sh").value.trim();
+  d.midi=ml?{lieu:ml,h:mh||"11h30-14h"}:null;
+  d.soir=sl?{lieu:sl,h:sh||"18h30-22h"}:null;
+  d.alerte=false;d.note=d.note||null;
+}
+function editEmp(i){
+  const d=EMP[i];
+  openModal("Modifier · "+d.jour,empForm(d)+
+    `<div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap"><button class="btn primary" onclick="saveEmp(${i})">Enregistrer</button><button class="btn danger" onclick="clearEmp(${i})">Jour sans service</button><button class="btn ghost" onclick="closeModal()">Annuler</button></div>
+    <p class="muted" style="margin-top:10px">À l'enregistrement : Stories, fiche Google et réponses automatiques mises à jour ; contenus du jour régénérés si le lieu change.</p>`);
+}
+function saveEmp(i){readEmpForm(EMP[i]);renderEmp();closeModal();toast(EMP[i].jour+" mis à jour — automatisations recalées ✓");}
+function clearEmp(i){EMP[i].midi=null;EMP[i].soir=null;EMP[i].alerte=false;renderEmp();closeModal();toast(EMP[i].jour+" : jour sans service");}
+function addEmp(){
+  openModal("Ajouter un emplacement",
+    `<div class="field"><label>Jour</label><select id="f-day">${EMP.map((d,i)=>`<option value="${i}">${d.jour}</option>`).join("")}</select></div>
+     <div class="field"><label>Service</label><select id="f-svc"><option value="midi">Midi</option><option value="soir">Soir</option></select></div>
+     <div class="field"><label>Lieu</label><input id="f-lieu" placeholder="Ex : Open air Fort d'Aubervilliers"></div>
+     <div class="field"><label>Horaires</label><input id="f-h" placeholder="Ex : 18h-23h"></div>
+     <div style="display:flex;gap:8px"><button class="btn primary" onclick="saveAddEmp()">Ajouter</button><button class="btn ghost" onclick="closeModal()">Annuler</button></div>`);
+}
+function saveAddEmp(){
+  const i=+document.getElementById("f-day").value,svc=document.getElementById("f-svc").value;
+  const lieu=document.getElementById("f-lieu").value.trim(),h=document.getElementById("f-h").value.trim();
+  if(!lieu){toast("Indique un lieu");return;}
+  EMP[i][svc]={lieu:lieu,h:h||(svc==="midi"?"11h30-14h":"18h30-22h")};
+  EMP[i].alerte=false;
+  renderEmp();closeModal();toast(EMP[i].jour+" "+svc+" : "+lieu+" ajouté — Story et Google programmés ✓");
+}
+renderEmp();
+
+/* ---------- Devis (CRM événementiel) ---------- */
+function openDevis(){
+  openModal("Devis généré · Mariage 12 septembre",
+    "<p class='muted' style='margin-bottom:8px'>Pré-rempli depuis la grille tarifaire « mariage » et les infos du prospect (90 personnes, Rambouillet)</p>"+
+    "<table class='data'><tbody>"+
+    "<tr><td>Formule mariage : plat + entrée (90 pers. × 16 €)</td><td class='num'>1 440 €</td></tr>"+
+    "<tr><td>Stand bubble tea (90 pers. × 5 €)</td><td class='num'>450 €</td></tr>"+
+    "<tr><td>Forfait déplacement Rambouillet + service en soirée</td><td class='num'>390 €</td></tr>"+
+    "<tr><td><b>Total TTC</b></td><td class='num'><b>2 280 €</b></td></tr>"+
+    "</tbody></table>"+
+    "<p class='muted' style='margin:10px 0'>Relances automatiques prévues : J+3 et J+8 si pas de réponse · le devis accepté créera les contenus « teaser » et « jour J » dans le calendrier.</p>"+
+    "<div style='display:flex;gap:8px'><button class='btn primary' onclick='closeModal();toast(\"Devis envoyé à Léa M. — suivi activé (démo)\")'>Envoyer le devis</button><button class='btn ghost' onclick='closeModal();toast(\"Montants modifiés (démo)\")'>Modifier les lignes</button></div>");
+}
+
+/* ---------- Design HQ : génération ---------- */
+const DZ=[
+  {cls:"pg1",kicker:"Rentrée HEC · septembre",big:"LE THAÏ<br>DU CAMPUS",emoji:"🎓",sub:"Formule étudiante plat + bubble tea 19 € · tous les mercredis soirs",brand:"Chana Thaï · campus HEC"},
+  {cls:"pg2",kicker:"Nouveau design généré",big:"SOIRÉE<br>OPEN AIR",emoji:"🎶",sub:"Bubble tea, mochis, hot dogs et Crousty Thaï jusqu'à la fin de la soirée",brand:"Chana Thaï en festival"},
+  {cls:"pg3",kicker:"Événements d'entreprise",big:"Vos équipes<br>méritent<br>Bangkok",emoji:"🏢",sub:"Séminaires, afterworks, fêtes de fin d'année · 40 à 300 personnes",brand:"Chana Thaï traiteur"}
+];
+let dzIdx=0;
+function genDesign(){
+  const brief=document.getElementById("dz-brief").value.trim();
+  const engSel=document.getElementById("dz-engine").value;
+  const eng=engSel==="nano"?["nano","Nano Banana 2"]:engSel==="ideo"?["ideo","Ideogram"]:["gpt","GPT Image 2"];
+  const d=DZ[dzIdx++%DZ.length];
+  const card=document.createElement("div");
+  card.className="poster-card";
+  card.innerHTML=`<div class="poster ${d.cls}"><div><div class="kicker">${d.kicker}</div><div class="big">${d.big}</div></div><span class="emoji">${d.emoji}</span><div><div class="sub">${brief?brief.charAt(0).toUpperCase()+brief.slice(1):d.sub}</div><div class="brandline" style="margin-top:8px">${d.brand}</div></div></div>
+  <div class="poster-meta"><div class="row1"><span class="engine ${eng[0]}">${eng[1]}</span><span class="pill post">nouveau</span></div><div class="acts2"><button class="btn ghost" onclick="toast('Déclinée en Story, Post et visuel Google (démo)')">Décliner</button><button class="btn ghost" onclick="toast('Variante générée (démo)')">Variante</button><button class="btn ghost demo">HD</button></div></div>`;
+  document.getElementById("design-grid").prepend(card);
+  card.querySelectorAll(".btn.demo").forEach(b=>b.addEventListener("click",()=>toast("Démo : « "+b.textContent.trim()+" » sera actif dans la version développée")));
+  toast("Design généré par "+eng[1]+" — charte Chana Thaï appliquée ✓");
+}
+
+/* ---------- Sélecteur de marque ---------- */
+document.querySelector(".brandpick").addEventListener("click",()=>{
+  openModal("Vos marques",
+    "<div class='brand-row' onclick='closeModal()'><div class='dot' style='background:linear-gradient(135deg,#f3c04b,#d94f2b)'>🍜</div><div><b>Chana Thaï</b><br><span class='muted'>Food truck + Gif-sur-Yvette · actif</span></div><span style='margin-left:auto' class='check'>✓</span></div>"+
+    "<div class='brand-row' onclick=\"toast('Démo : une seule marque active dans ce prototype')\"><div class='dot' style='background:linear-gradient(135deg,#cfe3ff,#7fa8e0)'>🚚</div><div><b>Truckissime (agence)</b><br><span class='muted'>3 food trucks clients · démo</span></div></div>"+
+    "<div class='brand-row' onclick=\"toast('Démo : une seule marque active dans ce prototype')\"><div class='dot' style='background:linear-gradient(135deg,#ffe1ee,#e88ab0)'>🧇</div><div><b>Sweet Truck</b><br><span class='muted'>Client agence · démo</span></div></div>"+
+    "<p class='muted' style='margin-top:10px'>Dans la version finale : bascule instantanée, chaque marque a son planning, sa charte et ses comptes connectés.</p>");
+});
+</script>
+
+
+</div></div>
+<div class="proto-note">Prototype cliquable — aucune donnée réelle</div>
+</body>
+</html>
