@@ -53,7 +53,7 @@ body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--
 .row{display:grid;gap:14px;margin-bottom:14px}
 .cols-2{grid-template-columns:1fr 1fr}.cols-3{grid-template-columns:1fr 1fr 1fr}.cols-4{grid-template-columns:repeat(4,1fr)}
 .cols-32{grid-template-columns:2fr 1fr}
-@media(max-width:980px){.cols-2,.cols-3,.cols-4,.cols-32{grid-template-columns:1fr}}
+@media(max-width:980px){.cols-2,.cols-3,.cols-32{grid-template-columns:1fr}.cols-4{grid-template-columns:1fr 1fr}}
 .kpi{background:var(--surface-1);border:1px solid var(--grid);border-radius:12px;padding:14px 16px}
 .kpi .lbl{font-size:11.5px;color:var(--ink-2);margin-bottom:4px}
 .kpi .val{font-size:24px;font-weight:800;letter-spacing:-.3px}
@@ -167,6 +167,42 @@ svg text{font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
 .mode-opt b{display:block;font-size:13px;margin-bottom:3px}
 .mode-opt span{font-size:11.5px;color:var(--ink-2);line-height:1.4;display:block}
 .proto-note{position:fixed;bottom:12px;right:14px;background:#12211c;color:#c9d8d2;font-size:10.5px;border-radius:8px;padding:6px 11px;opacity:.85;z-index:50}
+/* ---------- Responsive mobile ---------- */
+.menu-btn{display:none;border:none;background:#f1f0ec;border-radius:8px;width:36px;height:36px;font-size:17px;cursor:pointer;flex-shrink:0}
+.sb-backdrop{display:none;position:fixed;inset:0;background:rgba(11,11,11,.45);z-index:65}
+.sb-backdrop.show{display:block}
+@media(max-width:880px){
+  .menu-btn{display:block}
+  .app{display:block}
+  .sidebar{position:fixed;left:-270px;top:0;z-index:70;height:100vh;width:248px;transition:left .22s ease}
+  .sidebar.open{left:0;box-shadow:0 0 40px rgba(0,0,0,.4)}
+  .main{width:100%}
+  .screen{padding:16px 13px 44px}
+  .topbar{padding:10px 12px;gap:8px;flex-wrap:wrap}
+  .topbar h1{font-size:15px}
+  .topbar .right .muted{display:none}
+  .mode-chip{font-size:10px;padding:4px 9px}
+  table.data{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .vcard{flex-direction:column}
+  .vcard .preview{width:100%}
+  .vcard .preview .img,.vcard .preview.tall .img{height:110px}
+  .msg .txt{max-width:160px}
+  .modal{padding:15px}
+  .kpi .val{font-size:19px}
+  .proto-note{display:none}
+  .studio-grid{grid-template-columns:1fr}
+  .inbox-wrap{grid-template-columns:1fr}
+  .radio-modes{grid-template-columns:1fr}
+  .ab-wrap{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  .weekgrid{grid-template-columns:1fr}
+  .pipe{grid-template-columns:1fr}
+  .libgrid{grid-template-columns:1fr 1fr}
+  .design-grid{grid-template-columns:1fr 1fr}
+  .tabs button{padding:6px 10px;font-size:11.5px}
+  .rate-row{flex-wrap:wrap}
+}
 /* Modal & toast */
 .overlay{position:fixed;inset:0;background:rgba(11,11,11,.45);display:none;align-items:center;justify-content:center;z-index:90;padding:20px}
 .overlay.show{display:flex}
@@ -283,9 +319,12 @@ svg text{font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
   <div class="sb-foot">Prototype v4 · août 2026<br>Données de démonstration</div>
 </aside>
 
+<div class="sb-backdrop" id="sb-backdrop"></div>
+
 <!-- ================= MAIN ================= -->
 <div class="main">
   <div class="topbar">
+    <button class="menu-btn" id="menu-btn">☰</button>
     <h1 id="screen-title">Tableau de bord</h1>
     <div class="mode-chip"><span class="pulse"></span>Mode semi-automatique</div>
     <div class="right">
@@ -833,13 +872,20 @@ svg text{font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
 <script>
 /* ---------- Navigation ---------- */
 const titles={dashboard:"Tableau de bord",calendrier:"Calendrier éditorial",emplacements:"Emplacements et tournées",studio:"Studio de création",design:"Design haute qualité",bibliotheque:"Bibliothèque de médias",validation:"Publications à valider",inbox:"Boîte de réception sociale",prospects:"Prospects et devis",analyse:"Analyse des performances",seo:"SEO et visibilité moteurs IA",parametres:"Paramètres de la marque"};
+function closeMenu(){document.querySelector(".sidebar").classList.remove("open");document.getElementById("sb-backdrop").classList.remove("show");}
 function go(id){
   document.querySelectorAll(".screen").forEach(s=>s.classList.toggle("active",s.id===id));
   document.querySelectorAll(".nav-item").forEach(n=>n.classList.toggle("active",n.dataset.screen===id));
   document.getElementById("screen-title").textContent=titles[id]||id;
   window.scrollTo(0,0);
+  closeMenu();
   if(id==="analyse"&&!chartsDone){drawCharts();chartsDone=true;}
 }
+document.getElementById("menu-btn").addEventListener("click",()=>{
+  document.querySelector(".sidebar").classList.toggle("open");
+  document.getElementById("sb-backdrop").classList.toggle("show");
+});
+document.getElementById("sb-backdrop").addEventListener("click",closeMenu);
 document.querySelectorAll(".nav-item").forEach(n=>n.addEventListener("click",()=>go(n.dataset.screen)));
 document.querySelectorAll("[data-goto]").forEach(b=>b.addEventListener("click",()=>go(b.dataset.goto)));
 
