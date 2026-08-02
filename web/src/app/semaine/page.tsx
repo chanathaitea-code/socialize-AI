@@ -132,6 +132,7 @@ export default async function SemainePage({
         <nav className="flex gap-3 text-sm">
           <Link href="/emplacements" className="text-gray-500 hover:text-[#0f6b53]">Emplacements</Link>
           <span className="font-semibold text-[#0f6b53]">Story de la semaine</span>
+          <Link href="/marque" className="text-gray-500 hover:text-[#0f6b53]">Ma marque</Link>
         </nav>
       </header>
 
