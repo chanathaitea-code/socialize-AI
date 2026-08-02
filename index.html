@@ -234,6 +234,19 @@ svg text{font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
 .photopick.on{border-color:var(--accent);background:var(--accent-soft)}
 .pick-row{display:flex;gap:7px;align-items:center;justify-content:center;flex-wrap:wrap;margin-top:10px}
 .pick-row .lb{font-size:10px;font-weight:700;color:var(--ink-2);text-transform:uppercase;letter-spacing:.5px;width:100%;text-align:center}
+/* Rythme & plateformes */
+.chip-net{display:inline-flex;align-items:center;gap:6px;border:1.5px solid var(--grid);border-radius:18px;padding:6px 13px;font-size:12px;font-weight:700;cursor:pointer;background:#fff;color:var(--ink-2);user-select:none}
+.chip-net.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+.chip-net .st{font-size:9px;font-weight:800}
+.rate-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #efeee9}
+.rate-row:last-child{border-bottom:none}
+.rate-row .rt{flex:1}
+.rate-row .rt b{font-size:13px;display:block}
+.rate-row .rt span{font-size:11px;color:var(--ink-3)}
+.stepper{display:flex;align-items:center;gap:0;border:1px solid var(--grid);border-radius:9px;overflow:hidden}
+.stepper button{border:none;background:#f1f0ec;width:30px;height:30px;font-size:15px;font-weight:800;cursor:pointer;color:var(--ink-1)}
+.stepper button:hover{background:#e5e3db}
+.stepper .val{width:64px;text-align:center;font-weight:800;font-size:12.5px;font-variant-numeric:tabular-nums}
 .sm-foot{padding:7px 12px 10px;border-top:1px solid rgba(255,255,255,.15);font-size:8px;display:flex;justify-content:space-between;align-items:center}
 .sm-foot .pill-w{background:#fff;color:#0a3129;font-weight:800;border-radius:10px;padding:2px 8px}
 @media(max-width:980px){.ab-wrap{grid-template-columns:1fr}}
@@ -775,6 +788,24 @@ svg text{font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
         <div class="mode-opt"><b>Autonome</b><span>Planning, création et publication automatiques dans les limites définies ci-dessous.</span></div>
       </div>
     </div>
+    <div class="card" style="margin-bottom:14px">
+      <h3>Plateformes et rythme de publication <small>· le planning se recalcule automatiquement</small></h3>
+      <div style="margin-bottom:14px">
+        <div class="muted" style="margin-bottom:8px;font-weight:700;text-transform:uppercase;font-size:10px;letter-spacing:.5px">Plateformes actives</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap" id="plat-row"></div>
+      </div>
+      <div class="row cols-2" style="margin-bottom:0">
+        <div>
+          <div class="muted" style="margin-bottom:2px;font-weight:700;text-transform:uppercase;font-size:10px;letter-spacing:.5px">Publications par jour, par type</div>
+          <div id="rate-rows"></div>
+        </div>
+        <div style="background:#f7f6f2;border-radius:10px;padding:14px">
+          <div class="muted" style="font-weight:700;text-transform:uppercase;font-size:10px;letter-spacing:.5px;margin-bottom:8px">Résumé du rythme</div>
+          <div id="rate-summary" class="small" style="line-height:1.7"></div>
+          <div class="reco" style="margin-top:10px;margin-bottom:0"><span class="ic">💡</span><div id="rate-advice">Conseil IA : pour un food truck, 1 à 2 Stories par jour et 3 Reels par semaine donnent le meilleur rendement effort/vues.</div></div>
+        </div>
+      </div>
+    </div>
     <div class="row cols-2">
       <div class="card">
         <h3>Règles de validation</h3>
@@ -1051,6 +1082,46 @@ document.querySelectorAll(".lead").forEach(l=>l.addEventListener("click",()=>{
     "<p class='small' style='line-height:1.6'>Historique : détecté automatiquement dans la boîte de réception · fiche créée par l'IA · relance automatique programmée.</p>"+
     "<div style='display:flex;gap:8px;margin-top:14px;flex-wrap:wrap'><button class='btn primary' onclick='closeModal();toast(\"Message de relance préparé (démo)\")'>Relancer maintenant</button><button class='btn ghost' onclick='openDevis()'>Préparer un devis</button><button class='btn ghost' onclick='closeModal();toast(\"Étape mise à jour (démo)\")'>Changer d'étape</button></div>");
 }));
+
+/* ---------- Plateformes & rythme de publication ---------- */
+const PLATS=[["Instagram",true],["Facebook",true],["TikTok",true],["Google Business",true],["Threads",false],["LinkedIn",false],["Pinterest",false],["YouTube Shorts",false],["X",false]];
+const RATES=[
+  {t:"Stories",d:"Coulisses, lieu du jour, ambiance",v:2,max:5,unit:"/ jour"},
+  {t:"Posts",d:"Photos, offres, annonces",v:1,max:3,unit:"/ jour"},
+  {t:"Reels / vidéos",d:"Préparation, plats, équipe",v:0.5,max:3,unit:"/ jour",step:0.5,disp:x=>x===0.5?"1 / 2 jours":x+" / jour"},
+  {t:"Carrousels",d:"Avis clients, menus",v:0.25,max:1,unit:"/ jour",step:0.25,disp:x=>x===0.25?"1-2 / sem.":x===0.5?"3-4 / sem.":x+" / jour"},
+  {t:"Posts Google",d:"Offres et actus locales",v:0.5,max:2,unit:"/ jour",step:0.5,disp:x=>x===0.5?"3-4 / sem.":x+" / jour"}
+];
+function renderPlats(){
+  document.getElementById("plat-row").innerHTML=PLATS.map((p,i)=>
+    `<span class="chip-net${p[1]?" on":""}" onclick="platToggle(${i})">${p[1]?"✓ ":""}${p[0]}</span>`).join("");
+}
+function platToggle(i){
+  PLATS[i][1]=!PLATS[i][1];renderPlats();renderRates();
+  toast(PLATS[i][0]+(PLATS[i][1]?" activé — les prochains contenus y seront déclinés ✓":" désactivé"));
+}
+function rateChange(i,dir){
+  const r=RATES[i],st=r.step||1;
+  r.v=Math.max(0,Math.min(r.max,Math.round((r.v+dir*st)*100)/100));
+  renderRates();
+  toast("Rythme mis à jour — le planning de la semaine prochaine sera recalculé ✓");
+}
+function renderRates(){
+  document.getElementById("rate-rows").innerHTML=RATES.map((r,i)=>{
+    const disp=r.v===0?"désactivé":(r.disp?r.disp(r.v):r.v+" "+r.unit);
+    return `<div class="rate-row"><div class="rt"><b>${r.t}</b><span>${r.d}</span></div>
+    <div class="stepper"><button onclick="rateChange(${i},-1)">−</button><span class="val">${disp}</span><button onclick="rateChange(${i},1)">+</button></div></div>`;
+  }).join("");
+  const perWeek=Math.round(RATES.reduce((a,r)=>a+r.v,0)*7);
+  const nets=PLATS.filter(p=>p[1]).map(p=>p[0]);
+  document.getElementById("rate-summary").innerHTML=
+    `≈ <b>${perWeek} contenus par semaine</b>, déclinés sur <b>${nets.length} plateformes</b> :<br>${nets.join(" · ")||"aucune plateforme active"}<br><span class="muted">Chaque contenu est adapté à chaque réseau (format, légende, hashtags), ce n'est pas un simple copier-coller.</span>`;
+  const adv=document.getElementById("rate-advice");
+  if(perWeek>35)adv.innerHTML="<b>Attention :</b> plus de 35 contenus/semaine risque de lasser votre audience et d'épuiser la bibliothèque de photos. L'IA recommande de redescendre.";
+  else if(perWeek<7)adv.innerHTML="Rythme léger : en dessous de 7 contenus/semaine, la visibilité retombe vite. L'IA recommande au moins 1 Story par jour.";
+  else adv.innerHTML="Conseil IA : pour un food truck, 1 à 2 Stories par jour et 3 Reels par semaine donnent le meilleur rendement effort/vues.";
+}
+renderPlats();renderRates();
 
 /* ---------- Emplacements modifiables ---------- */
 let EMP=[
