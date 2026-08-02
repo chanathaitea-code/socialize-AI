@@ -82,19 +82,30 @@ export default async function SemainePage({
     const jour = slots.filter((s) => s.day === key);
     const midi = jour.find((s) => s.service === "midi");
     const soir = jour.find((s) => s.service === "soir");
-    let titre = "Repos du camion";
-    let detail = "On recharge les woks, à demain !";
-    if (midi && soir) {
-      titre = `${midi.note} · ${soir.note}`;
-      detail = `${midi.time_range} puis ${soir.time_range}`;
-    } else if (midi || soir) {
-      const x = (midi ?? soir)!;
-      titre = x.note ?? "";
-      detail = x.time_range ?? "";
-    }
-    const special = /festival|open air|événement|evenement/i.test(titre);
-    return { court: COURT[i], titre, detail, vide: !midi && !soir, special };
+    const services: { label: string; icone: string; lieu: string; horaires: string; special: boolean }[] = [];
+    if (midi)
+      services.push({
+        label: "MIDI",
+        icone: "☀️",
+        lieu: midi.note ?? "",
+        horaires: midi.time_range ?? "",
+        special: /festival|open air|événement|evenement/i.test(midi.note ?? ""),
+      });
+    if (soir)
+      services.push({
+        label: "SOIR",
+        icone: "🌙",
+        lieu: soir.note ?? "",
+        horaires: soir.time_range ?? "",
+        special: /festival|open air|événement|evenement/i.test(soir.note ?? ""),
+      });
+    return { court: COURT[i], jourLong: JOURS[i], services, vide: services.length === 0 };
   });
+
+  const legendeJours = lignes
+    .filter((l) => !l.vide)
+    .map((l) => `${l.jourLong} ${l.services.map((s) => `${s.label.toLowerCase()} ${s.lieu} (${s.horaires})`).join(" et ")}`)
+    .join(" · ");
 
   const periode = `du ${monday.getUTCDate()} au ${sunday.getUTCDate()} ${MOIS[sunday.getUTCMonth()]}`;
   const nbServices = slots.length;
@@ -156,24 +167,48 @@ export default async function SemainePage({
               {lignes.map((l, i) => (
                 <div
                   key={i}
-                  className="flex gap-1.5 items-center rounded-md px-1.5 py-1"
+                  className="flex gap-1.5 rounded-md px-1.5 py-1 items-start"
                   style={{
-                    background: l.special ? "rgba(255,255,255,.14)" : "rgba(255,255,255,.08)",
-                    border: l.special ? `1px solid ${theme.accent}` : "1px solid transparent",
-                    opacity: l.vide ? 0.5 : 1,
+                    background: "rgba(255,255,255,.08)",
+                    border: l.services.some((s) => s.special) ? `1px solid ${theme.accent}` : "1px solid transparent",
+                    opacity: l.vide ? 0.45 : 1,
                   }}
                 >
                   <span
-                    className="font-extrabold rounded text-center shrink-0"
+                    className="font-extrabold rounded text-center shrink-0 mt-0.5"
                     style={{ background: l.vide ? "rgba(255,255,255,.2)" : theme.accent, color: l.vide ? "#fff" : "#111", fontSize: 7, width: 26, padding: "2px 0" }}
                   >
                     {l.court}
                   </span>
-                  <div className="min-w-0">
-                    <b className="block leading-tight truncate" style={{ fontSize: 8.5, color: l.special ? theme.accent : undefined }}>
-                      {l.titre}
-                    </b>
-                    <span className="block opacity-75 truncate" style={{ fontSize: 7 }}>{l.detail}</span>
+                  <div className="min-w-0 flex-1">
+                    {l.vide ? (
+                      <>
+                        <b className="block leading-tight" style={{ fontSize: 8 }}>Repos du camion</b>
+                        <span className="block opacity-70" style={{ fontSize: 6.5 }}>On recharge les woks !</span>
+                      </>
+                    ) : (
+                      l.services.map((s, j) => (
+                        <div key={j} className={`flex items-baseline gap-1 ${j > 0 ? "mt-0.5 pt-0.5 border-t border-white/10" : ""}`}>
+                          <span
+                            className="font-extrabold shrink-0 rounded-sm px-1"
+                            style={{
+                              fontSize: 5.5,
+                              letterSpacing: 0.3,
+                              background: s.label === "MIDI" ? "rgba(255,255,255,.22)" : "rgba(0,0,0,.28)",
+                              color: "#fff",
+                            }}
+                          >
+                            {s.label}
+                          </span>
+                          <div className="min-w-0">
+                            <b className="block leading-tight truncate" style={{ fontSize: 8, color: s.special ? theme.accent : undefined }}>
+                              {s.lieu}
+                            </b>
+                            <span className="block opacity-75" style={{ fontSize: 6.5 }}>{s.horaires}</span>
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
               ))}
@@ -294,7 +329,7 @@ export default async function SemainePage({
             <div className="text-[11px] font-bold uppercase tracking-wide text-gray-500 mb-2">Légende proposée</div>
             <p className="text-sm text-[#12211c] leading-relaxed">
               📍 Vos rendez-vous thaï {periode} !{" "}
-              {lignes.filter((l) => !l.vide).map((l) => `${l.court} : ${l.titre}`).join(" · ")}. On vous attend au camion 🍜
+              {legendeJours}. On vous attend au camion 🍜
               <br />
               <span className="text-gray-400 text-xs">#foodtruck #thai #chanathai #essonne #yvelines</span>
             </p>
