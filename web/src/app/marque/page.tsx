@@ -15,7 +15,7 @@ type Brief = {
   interdits?: string;
 };
 
-const champ = "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0f6b53]";
+const champ = "border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0f6b53]";
 const label = "block text-[11px] font-bold uppercase tracking-wide text-gray-500 mb-1";
 
 export default async function MarquePage({
@@ -68,37 +68,37 @@ export default async function MarquePage({
           <form action={saveBrand} className="bg-white border border-gray-200 rounded-xl p-5 space-y-4">
             <div>
               <label className={label}>Nom de la marque</label>
-              <input name="nom" defaultValue={brand?.name ?? ""} className={champ} />
+              <input name="nom" defaultValue={brand?.name ?? ""} className={`${champ} w-full`} />
             </div>
             <div>
               <label className={label}>Activité</label>
-              <input name="activite" defaultValue={brief.activite ?? ""} placeholder="Food truck et restaurant à emporter de street food thaï" className={champ} />
+              <input name="activite" defaultValue={brief.activite ?? ""} placeholder="Food truck et restaurant à emporter de street food thaï" className={`${champ} w-full`} />
             </div>
             <div>
               <label className={label}>Positionnement</label>
-              <input name="positionnement" defaultValue={brief.positionnement ?? ""} placeholder="Authentique, premium mais accessible, recettes de Bangkok par notre cheffe" className={champ} />
+              <input name="positionnement" defaultValue={brief.positionnement ?? ""} placeholder="Authentique, premium mais accessible, recettes de Bangkok par notre cheffe" className={`${champ} w-full`} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className={label}>Public cible</label>
-                <input name="cible" defaultValue={brief.cible ?? ""} placeholder="18-45 ans, étudiants, actifs" className={champ} />
+                <input name="cible" defaultValue={brief.cible ?? ""} placeholder="18-45 ans, étudiants, actifs" className={`${champ} w-full`} />
               </div>
               <div>
                 <label className={label}>Zone</label>
-                <input name="zone" defaultValue={brief.zone ?? ""} placeholder="Essonne, Yvelines, 92" className={champ} />
+                <input name="zone" defaultValue={brief.zone ?? ""} placeholder="Essonne, Yvelines, 92" className={`${champ} w-full`} />
               </div>
             </div>
             <div>
               <label className={label}>Ton de communication</label>
-              <input name="ton" defaultValue={brief.ton ?? ""} placeholder="Convivial, gourmand, énergique — vouvoiement" className={champ} />
+              <input name="ton" defaultValue={brief.ton ?? ""} placeholder="Convivial, gourmand, énergique — vouvoiement" className={`${champ} w-full`} />
             </div>
             <div>
               <label className={label}>Objectifs</label>
-              <input name="objectifs" defaultValue={brief.objectifs ?? ""} placeholder="Trafic au camion, privatisations et traiteur, communauté" className={champ} />
+              <input name="objectifs" defaultValue={brief.objectifs ?? ""} placeholder="Trafic au camion, privatisations et traiteur, communauté" className={`${champ} w-full`} />
             </div>
             <div>
               <label className={label}>À ne jamais publier</label>
-              <textarea name="interdits" defaultValue={brief.interdits ?? ""} rows={2} placeholder="Mots interdits, sujets sensibles, promesses à éviter..." className={champ} />
+              <textarea name="interdits" defaultValue={brief.interdits ?? ""} rows={2} placeholder="Mots interdits, sujets sensibles, promesses à éviter..." className={`${champ} w-full`} />
             </div>
             <button className="w-full bg-[#0f6b53] text-white rounded-lg py-2.5 text-sm font-semibold hover:opacity-90">
               Enregistrer le profil
@@ -147,7 +147,7 @@ export default async function MarquePage({
             </div>
 
             <form action={addProduct} className="flex gap-2 mt-4 pt-4 border-t border-gray-100">
-              <input name="nom" placeholder="Nouveau produit" className={`${champ} flex-1`} />
+              <input name="nom" placeholder="Nouveau produit" className={`${champ} flex-1 min-w-0`} />
               <input name="prix" placeholder="13" className={`${champ} w-20`} />
               <button className="bg-[#12211c] text-white rounded-lg px-3 text-sm font-semibold">Ajouter</button>
             </form>
