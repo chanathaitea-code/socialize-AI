@@ -27,7 +27,12 @@ type Slot = {
   status: string;
 };
 
-export default async function EmplacementsPage() {
+export default async function EmplacementsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ err?: string }>;
+}) {
+  const { err } = await searchParams;
   const supabase = await supabaseServer();
   const {
     data: { user },
@@ -81,6 +86,12 @@ export default async function EmplacementsPage() {
             Chaque emplacement enregistré ici pilotera les Stories « on est là », la fiche Google et les réponses « vous êtes où ? ».
           </p>
         </div>
+
+        {err && (
+          <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+            Problème : {err}
+          </div>
+        )}
 
         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-1">
           {days.map((day) => {
