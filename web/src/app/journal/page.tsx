@@ -190,6 +190,14 @@ export default async function JournalPage({
                       </button>
                     </form>
                   )}
+                  {l.status === "published" && l.platform === "instagram" && (
+                    <span
+                      className="text-[11px] text-gray-400 max-w-[120px] leading-tight"
+                      title="Meta ne permet pas de supprimer un contenu Instagram publié par une application"
+                    >
+                      retrait impossible à distance, passez par Instagram
+                    </span>
+                  )}
                 </div>
               ))}
             </div>
