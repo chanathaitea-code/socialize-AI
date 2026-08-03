@@ -27,12 +27,17 @@ function maintenantParis(): { jour: number; heure: number } {
 }
 
 export async function GET(req: NextRequest) {
-  // Vercel signe ses appels planifiés ; en dehors, on exige le secret
+  // Reconnaître l'appel planifié de Vercel : selon les versions il porte
+  // l'en-tête x-vercel-cron, ou seulement son agent, ou le secret partagé.
   const secret = process.env.CRON_SECRET;
+  const agent = (req.headers.get("user-agent") ?? "").toLowerCase();
   const autorise =
     req.headers.get("x-vercel-cron") !== null ||
-    (secret && req.headers.get("authorization") === `Bearer ${secret}`);
-  if (!autorise) return new NextResponse("non autorisé", { status: 401 });
+    agent.includes("vercel-cron") ||
+    (!!secret && req.headers.get("authorization") === `Bearer ${secret}`);
+  if (!autorise) {
+    return NextResponse.json({ erreur: "non autorisé", agent }, { status: 401 });
+  }
 
   const supabase = supabaseAdmin();
   const journal: string[] = [];
