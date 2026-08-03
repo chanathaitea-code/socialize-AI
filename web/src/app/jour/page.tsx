@@ -52,6 +52,28 @@ export default async function JourPage({
       )
     : [];
 
+  // Rien aujourd'hui ? Alors on annonce le prochain rendez-vous, avec sa météo
+  let prochain: { jour: string; service: string; note: string | null; time_range: string | null } | null = null;
+  let meteoProchain: Meteo | null = null;
+  if (services.length === 0) {
+    const { data: suite } = await supabase
+      .from("location_schedule")
+      .select("day, service, note, time_range, status")
+      .gt("day", iso(jour))
+      .neq("status", "cancelled")
+      .order("day")
+      .order("service")
+      .limit(1);
+    const p = suite?.[0];
+    if (p) {
+      prochain = { jour: p.day, service: p.service, note: p.note, time_range: p.time_range };
+      const dansTroisJours = (new Date(p.day + "T00:00:00Z").getTime() - jour.getTime()) / 86_400_000 <= 3;
+      if (brandId && dansTroisJours) {
+        meteoProchain = await meteoDuJour(supabase, brandId, p.note ?? "", p.service === "midi" ? 12 : 19);
+      }
+    }
+  }
+
   const { data: produits } = await supabase
     .from("products")
     .select("id, name, out_of_stock")
@@ -102,9 +124,44 @@ export default async function JourPage({
             <div className="bg-white border border-gray-200 rounded-xl p-5">
               <div className="font-bold text-[#12211c]">Pas de service aujourd&apos;hui</div>
               <p className="text-sm text-gray-500 mt-1">
-                Le camion se repose. <Link href="/emplacements" className="underline">Ajouter un emplacement</Link> si
-                c&apos;est un oubli.
+                Le camion se repose.{" "}
+                <Link href="/emplacements" className="underline">
+                  Ajouter un emplacement
+                </Link>{" "}
+                si c&apos;est un oubli.
               </p>
+              {prochain && (
+                <div className="mt-4 pt-4 border-t border-gray-100 flex items-center gap-4 flex-wrap">
+                  <div className="min-w-[200px] flex-1">
+                    <div className="text-[11px] font-bold uppercase tracking-wide text-gray-400">
+                      Prochain rendez-vous
+                    </div>
+                    <div className="font-bold text-[#12211c] mt-1">
+                      {new Intl.DateTimeFormat("fr-FR", {
+                        timeZone: "Europe/Paris",
+                        weekday: "long",
+                        day: "numeric",
+                        month: "long",
+                      }).format(new Date(prochain.jour + "T12:00:00Z"))}{" "}
+                      · {prochain.service}
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      {prochain.note} · {prochain.time_range}
+                    </div>
+                  </div>
+                  {meteoProchain && !meteoProchain.erreur && (
+                    <div className="text-right">
+                      <div className="text-2xl font-extrabold text-[#0f6b53] tabular-nums">
+                        {meteoProchain.temperature}°
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {meteoProchain.resume}
+                        {typeof meteoProchain.pluie === "number" ? ` · ${meteoProchain.pluie} % de pluie` : ""}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           ) : (
             services.map((s, i) => {
