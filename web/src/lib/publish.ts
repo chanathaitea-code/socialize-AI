@@ -3,6 +3,7 @@ import { dechiffrer } from "./crypto";
 import { iso, libellePeriode } from "./semaine";
 import { legendeJours, lignesSemaine, type Slot } from "./story";
 import { unTheme } from "./design";
+import { identite } from "./marque";
 import { rendreStory } from "./story-render";
 import { publierPhotoFacebook, publierStoryInstagram } from "./meta";
 
@@ -64,6 +65,7 @@ export async function publierLaStory(
     periode,
     photoUrl,
     fond,
+    identite: await identite(supabase, brandId),
   });
   const png = Buffer.from(await image.arrayBuffer());
 

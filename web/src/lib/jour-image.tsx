@@ -1,4 +1,5 @@
 import type { Theme } from "./story";
+import type { Identite } from "./gabarits";
 import { STORY_H, STORY_L } from "./story-image";
 
 export type ServiceJour = { label: string; lieu: string; horaires: string };
@@ -14,6 +15,7 @@ export function jourImageElement({
   services,
   photoUrl,
   meteo,
+  identite,
 }: {
   theme: Theme;
   jourLong: string;
@@ -21,6 +23,7 @@ export function jourImageElement({
   services: ServiceJour[];
   photoUrl: string | null;
   meteo?: string;
+  identite?: Identite;
 }) {
   return (
     <div
@@ -65,7 +68,7 @@ export function jourImageElement({
             fontSize: 34,
           }}
         >
-          CHANA THAÏ
+          {identite?.nom ?? ""}
         </div>
       </div>
 
@@ -133,7 +136,7 @@ export function jourImageElement({
         }}
       >
         <div style={{ display: "flex" }}>
-          <span style={{ fontWeight: 800 }}>@chanathaitea2021</span>
+          <span style={{ fontWeight: 800 }}>{identite?.compte ?? ""}</span>
         </div>
         <div
           style={{
@@ -145,7 +148,7 @@ export function jourImageElement({
             padding: "12px 28px",
           }}
         >
-          foodtruckthai.fr
+          {identite?.site ?? ""}
         </div>
       </div>
     </div>

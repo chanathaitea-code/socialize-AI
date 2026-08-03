@@ -45,6 +45,7 @@ export const GABARITS: Record<
 };
 
 export type ChampsGabarit = {
+  identite?: Identite;
   titre?: string;
   sous?: string;
   prix?: string;
@@ -54,12 +55,10 @@ export type ChampsGabarit = {
   photoUrl?: string | null;
 };
 
-const MARQUE = "CHANA THAÏ";
-const COMPTE = "@chanathaitea2021";
-const SITE = "foodtruckthai.fr";
+export type Identite = { nom: string; compte: string; site: string };
 
 /** Le bas de tous les visuels : la signature, toujours au même endroit. */
-function pied() {
+function pied(id: Identite) {
   return (
     <div
       style={{
@@ -70,7 +69,7 @@ function pied() {
         fontSize: 32,
       }}
     >
-      <div style={{ display: "flex", fontWeight: 800 }}>{COMPTE}</div>
+      <div style={{ display: "flex", fontWeight: 800 }}>{id.compte}</div>
       <div
         style={{
           display: "flex",
@@ -81,14 +80,14 @@ function pied() {
           padding: "12px 28px",
         }}
       >
-        {SITE}
+        {id.site}
       </div>
     </div>
   );
 }
 
 /** L'étiquette ronde en haut à gauche, avec le nom de la marque en face. */
-function entete(theme: Theme, mot: string) {
+function entete(theme: Theme, mot: string, marque: string) {
   return (
     <div
       style={{
@@ -111,10 +110,14 @@ function entete(theme: Theme, mot: string) {
       >
         {mot}
       </div>
-      <div style={{ display: "flex", fontWeight: 800, fontSize: 32, color: "#fff" }}>{MARQUE}</div>
+      <div style={{ display: "flex", fontWeight: 800, fontSize: 32, color: "#fff" }}>{marque}</div>
     </div>
   );
 }
+
+/** L'identité à afficher, avec un repli neutre si elle n'est pas renseignée. */
+const ident = (c: ChampsGabarit): Identite =>
+  c.identite ?? { nom: "", compte: "", site: "" };
 
 const cadre = (theme: Theme) => ({
   width: L,
@@ -147,7 +150,7 @@ function platElement(theme: Theme, c: ChampsGabarit) {
             background: "linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0) 100%)",
           }}
         />
-        <div style={{ position: "absolute", top: 0, left: 0, display: "flex", width: L }}>{entete(theme, "À LA CARTE")}</div>
+        <div style={{ position: "absolute", top: 0, left: 0, display: "flex", width: L }}>{entete(theme, "À LA CARTE", ident(c).nom)}</div>
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", flex: 1, padding: "54px 56px 0" }}>
@@ -174,7 +177,7 @@ function platElement(theme: Theme, c: ChampsGabarit) {
         )}
       </div>
 
-      {pied()}
+      {pied(ident(c))}
     </div>
   );
 }
@@ -186,7 +189,7 @@ function avisElement(theme: Theme, c: ChampsGabarit) {
   const taille = texte.length > 260 ? 46 : texte.length > 150 ? 56 : 68;
   return (
     <div style={cadre(theme)}>
-      {entete(theme, "ILS EN PARLENT")}
+      {entete(theme, "ILS EN PARLENT", ident(c).nom)}
 
       <div style={{ display: "flex", flexDirection: "column", flex: 1, padding: "70px 62px 0" }}>
         <div style={{ display: "flex", fontSize: 72, letterSpacing: 6, color: theme.accent }}>★★★★★</div>
@@ -214,7 +217,7 @@ function avisElement(theme: Theme, c: ChampsGabarit) {
         </div>
       </div>
 
-      {pied()}
+      {pied(ident(c))}
     </div>
   );
 }
@@ -242,7 +245,7 @@ function coulissesElement(theme: Theme, c: ChampsGabarit) {
       />
 
       <div style={{ display: "flex", flexDirection: "column", width: L, height: H }}>
-        {entete(theme, "COULISSES")}
+        {entete(theme, "COULISSES", ident(c).nom)}
         <div style={{ display: "flex", flex: 1 }} />
         <div style={{ display: "flex", flexDirection: "column", padding: "0 56px 10px" }}>
           <div style={{ display: "flex", fontWeight: 800, fontSize: 92, lineHeight: 1.05 }}>
@@ -252,7 +255,7 @@ function coulissesElement(theme: Theme, c: ChampsGabarit) {
             <div style={{ display: "flex", fontSize: 40, opacity: 0.85, marginTop: 22, lineHeight: 1.35 }}>{c.sous}</div>
           )}
         </div>
-        {pied()}
+        {pied(ident(c))}
       </div>
     </div>
   );
@@ -262,7 +265,7 @@ function coulissesElement(theme: Theme, c: ChampsGabarit) {
 function reboursElement(theme: Theme, c: ChampsGabarit) {
   return (
     <div style={cadre(theme)}>
-      {entete(theme, "AUJOURD’HUI")}
+      {entete(theme, "AUJOURD’HUI", ident(c).nom)}
 
       <div style={{ display: "flex", flexDirection: "column", flex: 1, padding: "80px 56px 0" }}>
         <div style={{ display: "flex", fontWeight: 800, fontSize: 130, lineHeight: 1, color: theme.accent }}>
@@ -295,7 +298,7 @@ function reboursElement(theme: Theme, c: ChampsGabarit) {
         </div>
       )}
 
-      {pied()}
+      {pied(ident(c))}
     </div>
   );
 }

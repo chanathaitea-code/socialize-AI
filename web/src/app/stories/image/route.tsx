@@ -4,6 +4,7 @@ import { ImageResponse } from "next/og";
 import type { NextRequest } from "next/server";
 import { supabaseServer } from "@/lib/supabase/server";
 import { chargerThemes } from "@/lib/design";
+import { identite } from "@/lib/marque";
 import { STORY_H, STORY_L } from "@/lib/story-image";
 import { gabaritElement, type Gabarit } from "@/lib/gabarits";
 
@@ -39,6 +40,7 @@ export async function GET(req: NextRequest) {
 
     const photoUrl = media ? supabase.storage.from("media").getPublicUrl(media).data.publicUrl : null;
     const champs = {
+      identite: await identite(supabase),
       titre: sp.get("titre") ?? undefined,
       sous: sp.get("sous") ?? undefined,
       prix: sp.get("prix") ?? undefined,

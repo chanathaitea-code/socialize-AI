@@ -1,4 +1,5 @@
 import { FONDS_EXPORT, type Ligne, type Theme } from "@/lib/story";
+import type { Identite } from "@/lib/gabarits";
 
 export const STORY_L = 1080;
 export const STORY_H = 1920;
@@ -12,12 +13,14 @@ export function storyImageElement({
   periode,
   photoUrl,
   fond,
+  identite,
 }: {
   theme: Theme;
   lignes: Ligne[];
   periode: string;
   photoUrl: string | null;
   fond: string | null;
+  identite?: Identite;
 }) {
   const bandeau = photoUrl ? "#111" : fond && FONDS_EXPORT[fond] ? FONDS_EXPORT[fond] : theme.photo;
   return (
@@ -65,7 +68,7 @@ export function storyImageElement({
               letterSpacing: 1,
             }}
           >
-            CHANA THAÏ
+            {identite?.nom ?? ""}
           </div>
         </div>
 
@@ -170,7 +173,7 @@ export function storyImageElement({
           }}
         >
           <div style={{ display: "flex" }}>
-            <span style={{ fontWeight: 800 }}>@chanathaitea2021</span>
+            <span style={{ fontWeight: 800 }}>{identite?.compte ?? ""}</span>
             <span style={{ opacity: 0.8 }}>&nbsp;· devis en message privé</span>
           </div>
           <div
@@ -183,7 +186,7 @@ export function storyImageElement({
               padding: "10px 26px",
             }}
           >
-            foodtruckthai.fr
+            {identite?.site ?? ""}
           </div>
         </div>
       </div>

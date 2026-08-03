@@ -9,6 +9,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { rendreElement } from "./story-render";
 import { gabaritElement, legendeGabarit, type ChampsGabarit, type Gabarit } from "./gabarits";
 import { unTheme } from "./design";
+import { identite } from "./marque";
 import { iso, mondayOf, JOURS } from "./semaine";
 import { premierDuMois } from "./rapport";
 import { enregistrerPlan } from "./ligne";
@@ -105,7 +106,12 @@ async function programmer(
   }
 ): Promise<string> {
   const { brandId, gabarit, champs, themeCle, quand, cibles, origine } = opts;
-  const image = await rendreElement(gabaritElement(gabarit, await unTheme(supabase, brandId, themeCle), champs));
+  const image = await rendreElement(
+    gabaritElement(gabarit, await unTheme(supabase, brandId, themeCle), {
+      ...champs,
+      identite: await identite(supabase, brandId),
+    })
+  );
   const png = Buffer.from(await image.arrayBuffer());
   const chemin = `${brandId}/auto/${gabarit}-${Date.now()}.png`;
   const { error: upErr } = await supabase.storage

@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { dechiffrer } from "./crypto";
 import { JOURS, MOIS, iso } from "./semaine";
 import { unTheme } from "./design";
+import { identite } from "./marque";
 import { jourImageElement } from "./jour-image";
 import { rendreElement } from "./story-render";
 import { publierPhotoFacebook, publierStoryInstagram } from "./meta";
@@ -41,6 +42,7 @@ export async function publierLaJournee(
       services,
       photoUrl: mediaPath ? supabase.storage.from("media").getPublicUrl(mediaPath).data.publicUrl : null,
       meteo,
+      identite: await identite(supabase, brandId),
     })
   );
   const png = Buffer.from(await image.arrayBuffer());

@@ -58,6 +58,7 @@ export const config = {
   matcher: [
     "/",
     "/login",
+    "/bienvenue/:path*",
     "/emplacements/:path*",
     "/semaine/:path*",
     "/marque/:path*",

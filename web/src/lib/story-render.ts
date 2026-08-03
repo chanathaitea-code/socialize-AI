@@ -3,6 +3,7 @@ import { join } from "node:path";
 import type React from "react";
 import { ImageResponse } from "next/og";
 import type { Ligne, Theme } from "./story";
+import type { Identite } from "./gabarits";
 import { STORY_H, STORY_L, storyImageElement } from "./story-image";
 
 async function police(nom: string): Promise<ArrayBuffer> {
@@ -33,6 +34,7 @@ export async function rendreStory(opts: {
   periode: string;
   photoUrl: string | null;
   fond: string | null;
+  identite?: Identite;
 }): Promise<ImageResponse> {
   const [regular, extrabold] = await Promise.all([
     police("inter-regular.ttf"),

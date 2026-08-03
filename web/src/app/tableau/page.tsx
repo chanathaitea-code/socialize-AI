@@ -49,8 +49,10 @@ export default async function TableauPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: brands } = await supabase.from("brands").select("id").limit(1);
+  const { data: brands } = await supabase.from("brands").select("id, onboarded").limit(1);
   const brandId = brands?.[0]?.id as string | undefined;
+  // Un compte tout neuf passe d'abord par le parcours d'entrée
+  if (brands?.[0] && brands[0].onboarded === false) redirect("/bienvenue");
 
   const jour = aujourdhuiParis();
   const mois = premierDuMois(0);

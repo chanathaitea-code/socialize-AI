@@ -6,6 +6,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { clampWeek, iso, libellePeriode, mondayOf } from "@/lib/semaine";
 import { lignesSemaine, type Slot } from "@/lib/story";
 import { chargerThemes } from "@/lib/design";
+import { identite } from "@/lib/marque";
 import { STORY_H, STORY_L, storyImageElement } from "@/lib/story-image";
 
 export const runtime = "nodejs";
@@ -65,7 +66,14 @@ export async function GET(req: NextRequest) {
     ]);
 
     const image = new ImageResponse(
-      storyImageElement({ theme, lignes, periode: libellePeriode(monday), photoUrl, fond }),
+      storyImageElement({
+        theme,
+        lignes,
+        periode: libellePeriode(monday),
+        photoUrl,
+        fond,
+        identite: await identite(supabase),
+      }),
       {
         width: STORY_L,
         height: STORY_H,
