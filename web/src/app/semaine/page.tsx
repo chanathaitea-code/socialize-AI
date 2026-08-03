@@ -37,7 +37,7 @@ function mondayOf(offsetWeeks: number): Date {
 }
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 
-type Slot = { day: string; service: string; time_range: string | null; note: string | null };
+type Slot = { day: string; service: string; time_range: string | null; note: string | null; status?: string };
 
 export default async function SemainePage({
   searchParams,
@@ -90,7 +90,8 @@ export default async function SemainePage({
     const d = new Date(monday);
     d.setUTCDate(d.getUTCDate() + i);
     const key = iso(d);
-    const jour = slots.filter((s) => s.day === key);
+    // une journée annulée ne doit pas apparaître dans la story
+    const jour = slots.filter((s) => s.day === key && s.status !== "cancelled");
     const midi = jour.find((s) => s.service === "midi");
     const soir = jour.find((s) => s.service === "soir");
     const services: { label: string; icone: string; lieu: string; horaires: string; special: boolean }[] = [];

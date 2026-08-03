@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
 
     const { data } = await supabase
       .from("location_schedule")
-      .select("day, service, time_range, note")
+      .select("day, service, time_range, note, status")
       .gte("day", iso(monday))
       .lte("day", iso(sunday))
       .order("day")
