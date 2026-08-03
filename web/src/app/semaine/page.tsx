@@ -216,6 +216,15 @@ export default async function SemainePage({
             </div>
           </div>
           <p className="text-center text-xs text-gray-400 mt-3">Aperçu · format 1080×1920</p>
+          <a
+            href={`/semaine/image?theme=${sp.theme ?? "vert"}&w=${offset}${mediaPath ? `&media=${encodeURIComponent(mediaPath)}` : ""}${!mediaPath && fond ? `&fond=${fond}` : ""}`}
+            className="mt-3 w-full max-w-[300px] mx-auto flex items-center justify-center gap-2 bg-[#12211c] text-white rounded-lg py-2.5 text-sm font-semibold hover:opacity-90"
+          >
+            ⬇ Télécharger la story
+          </a>
+          <p className="text-center text-[11px] text-gray-400 mt-2">
+            Image PNG 1080×1920, prête à publier dans Instagram ou Facebook.
+          </p>
         </div>
 
         <div>
