@@ -2,7 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
 import Nav from "../nav";
-import { uploadPhoto, deletePhoto } from "./actions";
+import PhotoUploader from "./photo-uploader";
+import { deletePhoto } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -65,6 +66,9 @@ export default async function SemainePage({
     .order("day")
     .order("service");
   const slots = (data ?? []) as Slot[];
+
+  const { data: brands } = await supabase.from("brands").select("id").limit(1);
+  const brandId = (brands?.[0]?.id as string | undefined) ?? null;
 
   // Photos envoyées par l'utilisateur
   const { data: medias } = await supabase
@@ -234,19 +238,15 @@ export default async function SemainePage({
 
           <div className="mt-5 rounded-xl border border-[#c8e2da] bg-[#f7fbf9] p-4">
             <div className="text-[11px] font-bold uppercase tracking-wide text-[#0f6b53] mb-2">Votre photo en haut de la story</div>
-            <form action={uploadPhoto} className="flex flex-wrap items-center gap-2">
-              <input type="hidden" name="theme" value={sp.theme ?? "vert"} />
-              <input type="hidden" name="s" value={offset === 1 ? "next" : "cur"} />
-              <input
-                type="file"
-                name="file"
-                accept="image/*"
-                required
-                className="text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-[#0f6b53] file:px-3 file:py-1.5 file:text-white file:text-sm file:font-semibold"
+            {brandId ? (
+              <PhotoUploader
+                brandId={brandId}
+                theme={sp.theme ?? "vert"}
+                semaine={offset === 1 ? "next" : "cur"}
               />
-              <button className="text-sm bg-[#12211c] text-white rounded-lg px-3 py-1.5 font-semibold">Envoyer</button>
-            </form>
-            <p className="text-xs text-gray-500 mt-2">JPG ou PNG, 8 Mo maximum. Depuis le téléphone, l&apos;appareil photo est proposé directement.</p>
+            ) : (
+              <p className="text-sm text-red-700">Marque introuvable : ouvrez d&apos;abord l&apos;écran Emplacements.</p>
+            )}
 
             {(medias ?? []).length > 0 && (
               <div className="flex gap-2 flex-wrap mt-3">
