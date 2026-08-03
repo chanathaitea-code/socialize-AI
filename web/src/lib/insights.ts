@@ -77,8 +77,23 @@ export async function mesuresStoryInstagram(mediaId: string, jeton: string): Pro
 }
 
 /** Statistiques d'une publication de Page Facebook. */
-export async function mesuresPublicationFacebook(postId: string, jeton: string): Promise<Mesures> {
+export async function mesuresPublicationFacebook(idPublication: string, jeton: string): Promise<Mesures> {
   const mesures: Mesures = {};
+
+  // Une photo publiée renvoie parfois l'identifiant de la photo et non celui de
+  // la publication : les statistiques ne vivent que sur la publication.
+  let postId = idPublication;
+  if (!postId.includes("_")) {
+    try {
+      const j = await json(
+        `${GRAPH}/${idPublication}?fields=page_story_id&access_token=${encodeURIComponent(jeton)}`
+      );
+      if (j?.page_story_id) postId = String(j.page_story_id);
+    } catch {
+      // on tentera avec l'identifiant d'origine
+    }
+  }
+
   const { data, erreur } = await essayerMetriques(postId, jeton, [
     ["post_impressions", "post_impressions_unique", "post_engaged_users"],
     ["post_impressions", "post_impressions_unique"],
