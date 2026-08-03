@@ -40,9 +40,9 @@ export default async function ReseauxPage({
 
   const { data } = await supabase
     .from("social_accounts")
-    .select("id, platform, handle, display_name, status, token_expires_at, connected_at, encrypted_credentials")
+    .select("id, platform, handle, display_name, status, token_expires_at, connected_at, encrypted_credentials, details")
     .order("platform");
-  const comptes = (data ?? []) as (Compte & { encrypted_credentials?: string })[];
+  const comptes = (data ?? []) as (Compte & { encrypted_credentials?: string; details?: { user_token?: string } })[];
   const parPlateforme = new Map(comptes.map((c) => [c.platform, c]));
 
   // Autorisations réellement accordées : c'est ce qui explique la plupart des
@@ -51,9 +51,10 @@ export default async function ReseauxPage({
   let refusees: string[] = [];
   let erreurPermissions: string | null = null;
   const compteFb = parPlateforme.get("facebook");
-  if (compteFb?.encrypted_credentials) {
+  const jetonUtilisateur = compteFb?.details?.user_token;
+  if (jetonUtilisateur) {
     try {
-      const jeton = dechiffrer(String(compteFb.encrypted_credentials));
+      const jeton = dechiffrer(String(jetonUtilisateur));
       const r = await fetch(
         `https://graph.facebook.com/v21.0/me/permissions?access_token=${encodeURIComponent(jeton)}`,
         { cache: "no-store" }
@@ -76,7 +77,7 @@ export default async function ReseauxPage({
     "instagram_manage_insights",
     "read_insights",
   ];
-  const manquantes = compteFb ? ATTENDUES.filter((p) => !accordees.includes(p)) : [];
+  const manquantes = jetonUtilisateur ? ATTENDUES.filter((p) => !accordees.includes(p)) : [];
 
   return (
     <main className="min-h-screen bg-[#f4f4f1]">
@@ -142,7 +143,13 @@ export default async function ReseauxPage({
           {comptes.length ? "Reconnecter mes comptes Meta" : "Connecter Instagram et Facebook"}
         </a>
 
-        {compteFb && (
+        {compteFb && !jetonUtilisateur && (
+          <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-800">
+            Reconnectez vos comptes pour que l&apos;application puisse vérifier les autorisations accordées.
+          </div>
+        )}
+
+        {jetonUtilisateur && (
           <div
             className={`mt-6 rounded-xl border p-5 ${
               manquantes.length ? "border-amber-200 bg-amber-50" : "border-[#c8e2da] bg-[#f7fbf9]"

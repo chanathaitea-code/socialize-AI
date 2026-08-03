@@ -76,7 +76,11 @@ export async function GET(req: NextRequest) {
         encrypted_credentials: chiffrer(page.access_token),
         token_expires_at: expire,
         connected_at: new Date().toISOString(),
-        details: { pages: pages.map((p) => ({ id: p.id, name: p.name })) },
+        // Le jeton utilisateur sert uniquement à vérifier les autorisations accordées
+        details: {
+          pages: pages.map((p) => ({ id: p.id, name: p.name })),
+          user_token: chiffrer(jeton.access_token),
+        },
       },
     ];
 
