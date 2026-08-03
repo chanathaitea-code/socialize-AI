@@ -156,8 +156,8 @@ export default async function SemainePage({
               <span className="absolute top-2 right-2 font-extrabold z-10" style={{ fontSize: 10, textShadow: "0 1px 4px rgba(0,0,0,.5)" }}>CHANA THAÏ</span>
               {!mediaPath && !fond && PHOTOS[photoKey]}
             </div>
-            <div className="px-3 pt-2 font-black text-[17px] leading-none">
-              On est <span style={{ color: theme.accent }}>où</span> ?
+            <div className="px-3 pt-2 font-black text-[15px] leading-tight">
+              Retrouvez notre <span style={{ color: theme.accent }}>food truck</span>
             </div>
             <div className="px-3 text-[9px] opacity-80 mt-1">Vos rendez-vous thaï {periode}</div>
             <div className="flex-1 px-3 py-2 flex flex-col gap-1 min-h-0">
@@ -211,7 +211,7 @@ export default async function SemainePage({
               ))}
             </div>
             <div className="px-3 py-2 border-t border-white/15 flex items-center justify-between" style={{ fontSize: 8 }}>
-              <span><b>@chanathai</b> · devis en DM</span>
+              <span><b>@chanathaitea2021</b> · devis en DM</span>
               <span className="bg-white text-[#0a3129] font-extrabold rounded-full px-2 py-0.5">foodtruckthai.fr</span>
             </div>
           </div>
@@ -321,8 +321,8 @@ export default async function SemainePage({
           <div className="mt-6 rounded-xl border border-gray-200 bg-white p-4">
             <div className="text-[11px] font-bold uppercase tracking-wide text-gray-500 mb-2">Légende proposée</div>
             <p className="text-sm text-[#12211c] leading-relaxed">
-              📍 Vos rendez-vous thaï {periode} !{" "}
-              {legendeJours}. On vous attend au camion 🍜
+              📍 Retrouvez notre food truck {periode} !{" "}
+              {legendeJours ? `${legendeJours}. ` : ""}On vous attend au camion 🍜
               <br />
               <span className="text-gray-400 text-xs">#foodtruck #thai #chanathai #essonne #yvelines</span>
             </p>
