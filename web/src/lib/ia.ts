@@ -15,7 +15,14 @@ function fournisseurs(): Fournisseur[] {
       nom: "Google Gemini",
       url: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
       cle: process.env.GEMINI_API_KEY,
-      modeles: [perso, "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"].filter(Boolean) as string[],
+      modeles: [
+        perso,
+        "gemini-2.0-flash",
+        "gemini-2.0-flash-001",
+        "gemini-2.5-flash-lite",
+        "gemini-flash-latest",
+        "gemini-2.5-flash",
+      ].filter(Boolean) as string[],
     });
   }
   if (process.env.AI_GATEWAY_API_KEY) {
@@ -63,8 +70,27 @@ export async function redigerJson<T>(consigne: string, demande: string): Promise
           }),
           cache: "no-store",
         });
-        const j = await r.json();
-        if (!r.ok || j.error) {
+        let j = await r.json();
+        if (r.status === 429) {
+          // palier gratuit : quelques requêtes par minute, on laisse passer l'orage
+          await new Promise((res) => setTimeout(res, 4000));
+          const r2 = await fetch(f.url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${f.cle}` },
+            body: JSON.stringify({
+              model: modele,
+              temperature: 0.8,
+              max_tokens: 3000,
+              messages: [
+                { role: "system", content: consigne },
+                { role: "user", content: demande },
+              ],
+            }),
+            cache: "no-store",
+          });
+          if (r2.ok) j = await r2.json();
+        }
+        if (!j || j.error || !j.choices) {
           erreurs.push(`${f.nom}/${modele} : ${j?.error?.message ?? `réponse ${r.status}`}`);
           continue;
         }
