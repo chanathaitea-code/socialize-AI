@@ -38,10 +38,23 @@ const CIELS: Record<number, string> = {
   99: "orage violent",
 };
 
-/** Le nom du lieu tel que saisi, nettoyé pour le géocodage. */
-function requete(nom: string): string {
-  const sansPrefixe = nom.replace(/^(place|marché|marche|parking|technopole|campus)\s+(du|de la|des|de|d')?\s*/i, "");
-  return `${sansPrefixe.split(",")[0].trim()}, France`;
+/**
+ * « Place des Nymphes Montigny le Bretonneux » n'est pas une adresse connue des
+ * annuaires : on essaie du plus précis au plus général, jusqu'à la commune
+ * seule, qui finit toujours par répondre.
+ */
+function variantes(nom: string): string[] {
+  const propre = nom.split(",")[0].trim();
+  const sansPrefixe = propre.replace(
+    /^(place|marché|marche|parking|technopole|campus|centre|parvis|esplanade)\s+(du|de la|des|de|d')?\s*/i,
+    ""
+  );
+  const mots = propre.split(/\s+/);
+  const essais = [propre, sansPrefixe];
+  for (const n of [3, 2, 1]) {
+    if (mots.length > n) essais.push(mots.slice(-n).join(" "));
+  }
+  return [...new Set(essais.filter((e) => e.length > 2))].map((e) => `${e}, France`);
 }
 
 async function coordonnees(
@@ -60,12 +73,16 @@ async function coordonnees(
     if (!Number.isNaN(lat) && !Number.isNaN(lon)) return { lat, lon };
   }
 
-  const r = await fetch(
-    `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(requete(nom))}&count=1&language=fr&format=json`,
-    { cache: "no-store" }
-  );
-  const j = await r.json();
-  const p = j?.results?.[0];
+  let p: { latitude: number; longitude: number } | undefined;
+  for (const essai of variantes(nom)) {
+    const r = await fetch(
+      `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(essai)}&count=1&language=fr&format=json`,
+      { cache: "no-store" }
+    );
+    const j = await r.json();
+    p = j?.results?.[0];
+    if (p) break;
+  }
   if (!p) return null;
 
   await supabase
