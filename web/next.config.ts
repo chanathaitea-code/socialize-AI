@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/semaine/image": ["./public/fonts/**"],
     "/semaine": ["./public/fonts/**"],
+    "/api/cron/stories": ["./public/fonts/**"],
   },
   experimental: {
     // Les photos prises au téléphone pèsent souvent 3 à 6 Mo : la limite

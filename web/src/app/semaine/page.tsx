@@ -363,11 +363,20 @@ export default async function SemainePage({
                 <input type="checkbox" name="facebook" defaultChecked={fbPret} disabled={!fbPret} className="w-4 h-4 accent-[#0f6b53]" />
                 Page Facebook {fbPret ? "" : "(non connectée)"}
               </label>
+              <select
+                name="delai"
+                defaultValue="10"
+                className="text-sm border border-gray-300 rounded-lg px-2 py-2 bg-white"
+              >
+                <option value="0">Envoyer tout de suite</option>
+                <option value="10">Dans 10 minutes, annulable</option>
+                <option value="30">Dans 30 minutes, annulable</option>
+              </select>
               <button
                 disabled={!igPret && !fbPret}
                 className="ml-auto bg-[#0f6b53] text-white rounded-lg px-4 py-2 text-sm font-semibold hover:opacity-90 disabled:opacity-40"
               >
-                Publier maintenant
+                Publier
               </button>
             </div>
             {!igPret && !fbPret && (

@@ -6,6 +6,7 @@ const LIENS = [
   { href: "/semaine", label: "Story de la semaine" },
   { href: "/marque", label: "Ma marque" },
   { href: "/reseaux", label: "Mes réseaux" },
+  { href: "/journal", label: "Journal" },
 ];
 
 export default function Nav({ actif }: { actif: string }) {

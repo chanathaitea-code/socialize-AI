@@ -35,7 +35,8 @@ export async function middleware(request: NextRequest) {
     (path.startsWith("/emplacements") ||
       path.startsWith("/semaine") ||
       path.startsWith("/marque") ||
-      path.startsWith("/reseaux"))
+      path.startsWith("/reseaux") ||
+      path.startsWith("/journal"))
   ) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
@@ -46,5 +47,13 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/", "/login", "/emplacements/:path*", "/semaine/:path*", "/marque/:path*", "/reseaux/:path*"],
+  matcher: [
+    "/",
+    "/login",
+    "/emplacements/:path*",
+    "/semaine/:path*",
+    "/marque/:path*",
+    "/reseaux/:path*",
+    "/journal/:path*",
+  ],
 };

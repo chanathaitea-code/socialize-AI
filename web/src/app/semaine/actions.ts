@@ -3,11 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
-import { dechiffrer } from "@/lib/crypto";
-import { clampWeek, iso, libellePeriode, mondayOf } from "@/lib/semaine";
-import { THEMES, lignesSemaine, type Slot } from "@/lib/story";
-import { rendreStory } from "@/lib/story-render";
-import { publierPhotoFacebook, publierStoryInstagram } from "@/lib/meta";
+import { clampWeek, iso, mondayOf } from "@/lib/semaine";
+import { publierLaStory } from "@/lib/publish";
 
 /**
  * L'envoi de la photo se fait depuis le navigateur, directement vers le
@@ -32,10 +29,14 @@ function lienRetour(theme: string, w: number, media: string | null, fond: string
   return `${u}&${params}`;
 }
 
+const REDIRECT = "NEXT_REDIRECT";
+function estRedirection(e: unknown) {
+  return !!e && typeof e === "object" && "digest" in e && String((e as { digest?: string }).digest).startsWith(REDIRECT);
+}
+
 /**
- * Publie la story sur les réseaux cochés. L'image est d'abord déposée dans le
- * stockage public : l'API de Meta ne sait publier qu'à partir d'une URL
- * accessible depuis ses serveurs.
+ * Publie la story, tout de suite ou après un délai de grâce pendant lequel
+ * l'envoi reste annulable depuis le journal.
  */
 export async function publierStory(formData: FormData) {
   const theme = String(formData.get("theme") ?? "vert");
@@ -43,11 +44,14 @@ export async function publierStory(formData: FormData) {
   const media = (formData.get("media") as string) || null;
   const fond = (formData.get("fond") as string) || null;
   const legende = String(formData.get("legende") ?? "").trim();
-  const surInstagram = formData.get("instagram") === "on";
-  const surFacebook = formData.get("facebook") === "on";
-  const retour = (p: string) => redirect(lienRetour(theme, w, media, fond, p));
+  const delai = Math.max(0, Math.min(120, parseInt(String(formData.get("delai") ?? "10"), 10) || 0));
+  const cibles = [
+    formData.get("instagram") === "on" ? "instagram" : null,
+    formData.get("facebook") === "on" ? "facebook" : null,
+  ].filter(Boolean) as string[];
 
-  if (!surInstagram && !surFacebook) retour("err=Choisissez%20au%20moins%20un%20r%C3%A9seau");
+  const retour = (p: string) => redirect(lienRetour(theme, w, media, fond, p));
+  if (!cibles.length) retour("err=Choisissez%20au%20moins%20un%20r%C3%A9seau");
 
   const supabase = await supabaseServer();
   const {
@@ -59,98 +63,44 @@ export async function publierStory(formData: FormData) {
   const brandId = brands?.[0]?.id as string | undefined;
   if (!brandId) retour("err=Marque%20introuvable");
 
-  const { data: comptes } = await supabase
-    .from("social_accounts")
-    .select("platform, external_id, encrypted_credentials, details");
-  const instagram = comptes?.find((c) => c.platform === "instagram");
-  const facebook = comptes?.find((c) => c.platform === "facebook");
-  if (surInstagram && !instagram) retour("err=Instagram%20non%20connect%C3%A9");
-  if (surFacebook && !facebook) retour("err=Page%20Facebook%20non%20connect%C3%A9e");
+  const monday = mondayOf(w);
+
+  // Envoi différé : on enregistre un rendez-vous, la tâche planifiée s'en charge
+  if (delai > 0) {
+    const { error } = await supabase.from("story_jobs").insert({
+      brand_id: brandId,
+      run_at: new Date(Date.now() + delai * 60_000).toISOString(),
+      monday: iso(monday),
+      theme,
+      media_path: media,
+      fond,
+      caption: legende,
+      targets: cibles,
+      origin: "manuel",
+    });
+    if (error) retour(`err=${encodeURIComponent(error.message)}`);
+    revalidatePath("/journal");
+    retour(`ok=${encodeURIComponent(`Envoi programmé dans ${delai} minutes, annulable depuis le journal`)}`);
+  }
 
   try {
-    // 1. Construire l'image de la semaine affichée
-    const monday = mondayOf(w);
-    const sunday = new Date(monday);
-    sunday.setUTCDate(sunday.getUTCDate() + 6);
-    const { data: slots } = await supabase
-      .from("location_schedule")
-      .select("day, service, time_range, note")
-      .gte("day", iso(monday))
-      .lte("day", iso(sunday))
-      .order("day")
-      .order("service");
-
-    const photoUrl = media ? supabase.storage.from("media").getPublicUrl(media).data.publicUrl : null;
-    const image = await rendreStory({
-      theme: THEMES[theme] ?? THEMES.vert,
-      lignes: lignesSemaine((slots ?? []) as Slot[], monday),
-      periode: libellePeriode(monday),
-      photoUrl,
+    const resultats = await publierLaStory(supabase, {
+      brandId: brandId!,
+      monday,
+      theme,
+      mediaPath: media,
       fond,
+      legende,
+      cibles,
     });
-    const png = Buffer.from(await image.arrayBuffer());
-
-    // 2. Déposer l'image dans le stockage public
-    const chemin = `${brandId}/stories/${iso(monday)}-${Date.now()}.png`;
-    const { error: upErr } = await supabase.storage
-      .from("media")
-      .upload(chemin, png, { contentType: "image/png", upsert: false });
-    if (upErr) throw new Error(`dépôt de l'image impossible : ${upErr.message}`);
-    const url = supabase.storage.from("media").getPublicUrl(chemin).data.publicUrl;
-
-    // 3. Publier, réseau par réseau, en journalisant chaque résultat
-    const journal: { platform: string; status: string; remote_id?: string; error?: string }[] = [];
-
-    if (surInstagram && instagram) {
-      try {
-        const id = await publierStoryInstagram(
-          String(instagram.external_id),
-          dechiffrer(String(instagram.encrypted_credentials)),
-          url
-        );
-        journal.push({ platform: "instagram", status: "published", remote_id: id });
-      } catch (e) {
-        journal.push({ platform: "instagram", status: "failed", error: e instanceof Error ? e.message : "échec" });
-      }
-    }
-
-    if (surFacebook && facebook) {
-      try {
-        const id = await publierPhotoFacebook(
-          String(facebook.external_id),
-          dechiffrer(String(facebook.encrypted_credentials)),
-          url,
-          legende
-        );
-        journal.push({ platform: "facebook", status: "published", remote_id: id });
-      } catch (e) {
-        journal.push({ platform: "facebook", status: "failed", error: e instanceof Error ? e.message : "échec" });
-      }
-    }
-
-    await supabase.from("publication_log").insert(
-      journal.map((j) => ({
-        brand_id: brandId,
-        platform: j.platform,
-        kind: "story",
-        status: j.status,
-        remote_id: j.remote_id ?? null,
-        caption: legende || null,
-        media_url: url,
-        error: j.error ?? null,
-      }))
-    );
-
-    revalidatePath("/semaine");
-    const echecs = journal.filter((j) => j.status === "failed");
+    revalidatePath("/journal");
+    const echecs = resultats.filter((r) => r.status === "failed");
     if (echecs.length) {
       retour(`err=${encodeURIComponent(echecs.map((e) => `${e.platform} : ${e.error}`).join(" · "))}`);
     }
-    retour(`ok=${encodeURIComponent(`Publié sur ${journal.map((j) => j.platform).join(" et ")}`)}`);
+    retour(`ok=${encodeURIComponent(`Publié sur ${resultats.map((r) => r.platform).join(" et ")}`)}`);
   } catch (e) {
-    if (e && typeof e === "object" && "digest" in e && String((e as { digest?: string }).digest).startsWith("NEXT_REDIRECT")) {
-      throw e;
-    }
+    if (estRedirection(e)) throw e;
     retour(`err=${encodeURIComponent(e instanceof Error ? e.message : "publication impossible")}`);
   }
 }
