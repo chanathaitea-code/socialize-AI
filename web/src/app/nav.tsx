@@ -4,14 +4,16 @@ import { signOut } from "./emplacements/actions";
 
 const LIENS = [
   { href: "/jour", label: "Aujourd\u2019hui" },
+  { href: "/calendrier", label: "Calendrier" },
   { href: "/emplacements", label: "Emplacements" },
-  { href: "/semaine", label: "Story de la semaine" },
-  { href: "/marque", label: "Ma marque" },
-  { href: "/reseaux", label: "Mes réseaux" },
-  { href: "/journal", label: "Journal" },
+  { href: "/stories", label: "Stories" },
+  { href: "/semaine", label: "Semaine" },
   { href: "/studio", label: "Studio" },
+  { href: "/journal", label: "Journal" },
   { href: "/analyse", label: "Analyse" },
   { href: "/rapport", label: "Rapport" },
+  { href: "/marque", label: "Ma marque" },
+  { href: "/reseaux", label: "Mes réseaux" },
 ];
 
 export default async function Nav({ actif }: { actif: string }) {
