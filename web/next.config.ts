@@ -4,6 +4,7 @@ const nextConfig: NextConfig = {
   // Les polices de l'export image doivent voyager avec la fonction serveur
   outputFileTracingIncludes: {
     "/semaine/image": ["./public/fonts/**"],
+    "/semaine": ["./public/fonts/**"],
   },
   experimental: {
     // Les photos prises au téléphone pèsent souvent 3 à 6 Mo : la limite

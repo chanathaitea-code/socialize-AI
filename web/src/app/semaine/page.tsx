@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
 import Nav from "../nav";
 import PhotoUploader from "./photo-uploader";
-import { deletePhoto } from "./actions";
+import { deletePhoto, publierStory } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -70,6 +70,10 @@ export default async function SemainePage({
   const { data: brands } = await supabase.from("brands").select("id").limit(1);
   const brandId = (brands?.[0]?.id as string | undefined) ?? null;
 
+  const { data: comptes } = await supabase.from("social_accounts").select("platform, status");
+  const igPret = (comptes ?? []).some((c) => c.platform === "instagram" && c.status === "connected");
+  const fbPret = (comptes ?? []).some((c) => c.platform === "facebook" && c.status === "connected");
+
   // Photos envoyées par l'utilisateur
   const { data: medias } = await supabase
     .from("media_assets")
@@ -113,6 +117,10 @@ export default async function SemainePage({
     .join(" · ");
 
   const periode = `du ${monday.getUTCDate()} au ${sunday.getUTCDate()} ${MOIS[sunday.getUTCMonth()]}`;
+  const legendeProposee =
+    `📍 Retrouvez notre food truck ${periode} ! ` +
+    (legendeJours ? `${legendeJours}. ` : "") +
+    "On vous attend au camion 🍜\n\n#foodtruck #thai #chanathai #essonne #yvelines";
   const nbServices = slots.length;
 
   const lien = (o: { t?: string; p?: string; s?: string; media?: string | null; fond?: string | null }) => {
@@ -327,18 +335,50 @@ export default async function SemainePage({
             </div>
           </div>
 
-          <div className="mt-6 rounded-xl border border-gray-200 bg-white p-4">
-            <div className="text-[11px] font-bold uppercase tracking-wide text-gray-500 mb-2">Légende proposée</div>
-            <p className="text-sm text-[#12211c] leading-relaxed">
-              📍 Retrouvez notre food truck {periode} !{" "}
-              {legendeJours ? `${legendeJours}. ` : ""}On vous attend au camion 🍜
-              <br />
-              <span className="text-gray-400 text-xs">#foodtruck #thai #chanathai #essonne #yvelines</span>
+          <form action={publierStory} className="mt-6 rounded-xl border border-gray-200 bg-white p-4">
+            <input type="hidden" name="theme" value={sp.theme ?? "vert"} />
+            <input type="hidden" name="w" value={offset} />
+            {mediaPath && <input type="hidden" name="media" value={mediaPath} />}
+            {!mediaPath && fond && <input type="hidden" name="fond" value={fond} />}
+
+            <div className="text-[11px] font-bold uppercase tracking-wide text-gray-500 mb-2">Légende</div>
+            <textarea
+              name="legende"
+              rows={4}
+              defaultValue={legendeProposee}
+              className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 leading-relaxed focus:outline-none focus:ring-2 focus:ring-[#0f6b53]"
+            />
+            <p className="text-[11px] text-gray-400 mt-1">
+              Relisez-la avant d&apos;envoyer : c&apos;est ce texte qui accompagnera la publication Facebook.
             </p>
-          </div>
+
+            <div className="flex flex-wrap items-center gap-4 mt-4 pt-4 border-t border-gray-100">
+              <label className={`flex items-center gap-2 text-sm ${igPret ? "" : "text-gray-400"}`}>
+                <input type="checkbox" name="instagram" defaultChecked={igPret} disabled={!igPret} className="w-4 h-4 accent-[#0f6b53]" />
+                Story Instagram {igPret ? "" : "(non connecté)"}
+              </label>
+              <label className={`flex items-center gap-2 text-sm ${fbPret ? "" : "text-gray-400"}`}>
+                <input type="checkbox" name="facebook" defaultChecked={fbPret} disabled={!fbPret} className="w-4 h-4 accent-[#0f6b53]" />
+                Page Facebook {fbPret ? "" : "(non connectée)"}
+              </label>
+              <button
+                disabled={!igPret && !fbPret}
+                className="ml-auto bg-[#0f6b53] text-white rounded-lg px-4 py-2 text-sm font-semibold hover:opacity-90 disabled:opacity-40"
+              >
+                Publier maintenant
+              </button>
+            </div>
+            {!igPret && !fbPret && (
+              <p className="text-xs text-gray-500 mt-3">
+                Aucun compte connecté. Passez par <Link href="/reseaux" className="underline">Mes réseaux</Link> pour relier
+                Instagram et votre Page.
+              </p>
+            )}
+          </form>
 
           <p className="text-xs text-gray-400 mt-5">
-            Prochaine étape du développement : publication automatique de cette story chaque dimanche 18h sur Instagram et Facebook.
+            L&apos;envoi part immédiatement, sans repasser par une validation : relisez la légende et l&apos;aperçu avant de
+            cliquer. La programmation automatique du dimanche 18h arrivera ensuite.
           </p>
         </div>
       </div>
