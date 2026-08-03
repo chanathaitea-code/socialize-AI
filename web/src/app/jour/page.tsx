@@ -69,7 +69,7 @@ export default async function JourPage({
       prochain = { jour: p.day, service: p.service, note: p.note, time_range: p.time_range };
       const dansTroisJours = (new Date(p.day + "T00:00:00Z").getTime() - jour.getTime()) / 86_400_000 <= 3;
       if (brandId && dansTroisJours) {
-        meteoProchain = await meteoDuJour(supabase, brandId, p.note ?? "", p.service === "midi" ? 12 : 19);
+        meteoProchain = await meteoDuJour(supabase, brandId, p.note ?? "", p.service === "midi" ? 12 : 19, p.day);
       }
     }
   }
@@ -149,6 +149,9 @@ export default async function JourPage({
                       {prochain.note} · {prochain.time_range}
                     </div>
                   </div>
+                  {meteoProchain?.erreur && (
+                    <span className="text-xs text-gray-400">météo : {meteoProchain.erreur}</span>
+                  )}
                   {meteoProchain && !meteoProchain.erreur && (
                     <div className="text-right">
                       <div className="text-2xl font-extrabold text-[#0f6b53] tabular-nums">

@@ -96,19 +96,25 @@ export async function meteoDuJour(
   supabase: SupabaseClient,
   brandId: string,
   lieu: string,
-  heure: number
+  heure: number,
+  date?: string // AAAA-MM-JJ, aujourd'hui par défaut
 ): Promise<Meteo> {
   try {
     const pos = await coordonnees(supabase, brandId, lieu);
     if (!pos) return { lieu, erreur: "lieu non localisé" };
 
+    const periode = date ? `&start_date=${date}&end_date=${date}` : "&forecast_days=1";
     const r = await fetch(
       `https://api.open-meteo.com/v1/forecast?latitude=${pos.lat}&longitude=${pos.lon}` +
-        `&hourly=temperature_2m,precipitation_probability,weather_code&forecast_days=1&timezone=Europe%2FParis`,
+        `&hourly=temperature_2m,precipitation_probability,weather_code${periode}&timezone=Europe%2FParis`,
       { cache: "no-store" }
     );
     const j = await r.json();
+    if (j?.error) return { lieu, erreur: String(j.reason ?? "prévision indisponible") };
     const i = Math.min(heure, 23);
+    if (typeof j?.hourly?.temperature_2m?.[i] !== "number") {
+      return { lieu, erreur: "prévision non disponible pour cette heure" };
+    }
     const temperature = Math.round(j?.hourly?.temperature_2m?.[i]);
     const pluie = j?.hourly?.precipitation_probability?.[i];
     const code = j?.hourly?.weather_code?.[i];
