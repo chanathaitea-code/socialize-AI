@@ -13,6 +13,10 @@ type Job = {
   status: string;
   targets: string[] | null;
   error: string | null;
+  kind: string | null;
+  format: string | null;
+  caption: string | null;
+  media_path: string | null;
 };
 
 type Ligne = {
@@ -53,7 +57,7 @@ export default async function JournalPage({
 
   const { data: jobsData } = await supabase
     .from("story_jobs")
-    .select("id, run_at, monday, origin, status, targets, error")
+    .select("id, run_at, monday, origin, status, targets, error, kind, format, caption, media_path")
     .eq("status", "scheduled")
     .order("run_at");
   const jobs = (jobsData ?? []) as Job[];
@@ -112,14 +116,26 @@ export default async function JournalPage({
             <div className="grid gap-2">
               {jobs.map((j) => (
                 <div key={j.id} className="bg-white border border-amber-200 rounded-xl p-4 flex items-center gap-3 flex-wrap">
+                  {j.media_path && j.kind === "photo" && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={supabase.storage.from("media").getPublicUrl(j.media_path).data.publicUrl}
+                      alt=""
+                      className="w-11 h-11 object-cover rounded-lg border border-amber-200"
+                    />
+                  )}
                   <span className="text-[10px] font-bold uppercase rounded px-2 py-1 bg-amber-100 text-amber-800">
                     {j.origin === "hebdo" ? "automatique" : "programmé"}
                   </span>
                   <div className="min-w-0 flex-1 text-sm">
                     <div className="font-semibold text-[#12211c]">Départ {quand(j.run_at)}</div>
                     <div className="text-gray-500">
-                      Semaine du {j.monday} · {(j.targets ?? []).map((t) => RESEAU[t] ?? t).join(" et ")}
+                      {j.kind === "photo"
+                        ? `${j.format === "story" ? "Story" : "Publication"} du studio`
+                        : "Story des emplacements"}{" "}
+                      · {(j.targets ?? []).map((t) => RESEAU[t] ?? t).join(" et ")}
                     </div>
+                    {j.caption && <div className="text-xs text-gray-400 mt-1 line-clamp-2">{j.caption}</div>}
                   </div>
                   <form action={annulerEnvoi}>
                     <input type="hidden" name="id" value={j.id} />
