@@ -154,10 +154,16 @@ export default function Formulaire({
 
         {avecPhoto && (
           <div className="text-sm">
-            <span className="block font-semibold text-[#12211c] mb-2">Photo</span>
+            <div className="flex items-center gap-3 mb-2">
+              <span className="font-semibold text-[#12211c]">Photo</span>
+              <a href="/design" className="text-xs text-[#0f6b53] font-semibold underline">
+                importer des photos
+              </a>
+            </div>
             {photos.length === 0 ? (
               <p className="text-xs text-gray-500">
-                Aucune photo dans la bibliothèque. Envoyez-en une depuis Story de la semaine, elles sont partagées.
+                Aucune photo dans la bibliothèque. Elles s&apos;importent depuis l&apos;écran Design, section « Vos
+                photos », et servent ensuite partout.
               </p>
             ) : (
               <div className="flex gap-2 flex-wrap">
