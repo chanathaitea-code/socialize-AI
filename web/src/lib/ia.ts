@@ -17,11 +17,10 @@ function fournisseurs(): Fournisseur[] {
       cle: process.env.GEMINI_API_KEY,
       modeles: [
         perso,
+        "gemini-flash-latest",
         "gemini-2.0-flash",
         "gemini-2.0-flash-001",
         "gemini-2.5-flash-lite",
-        "gemini-flash-latest",
-        "gemini-2.5-flash",
       ].filter(Boolean) as string[],
     });
   }
@@ -44,6 +43,32 @@ function fournisseurs(): Fournisseur[] {
   return liste;
 }
 
+/**
+ * Les modèles tronquent parfois leur réponse en plein tableau. Plutôt que de
+ * tout jeter, on récupère les éléments complets et on referme les accolades.
+ */
+function parseSouple<T>(texte: string): T | null {
+  const debut = texte.indexOf("{");
+  if (debut < 0) return null;
+  const brut = texte.slice(debut);
+  const fin = brut.lastIndexOf("}");
+  if (fin > 0) {
+    try {
+      return JSON.parse(brut.slice(0, fin + 1)) as T;
+    } catch {
+      // on tente la réparation ci-dessous
+    }
+  }
+  for (let i = brut.lastIndexOf("},"); i > 0; i = brut.lastIndexOf("},", i - 1)) {
+    try {
+      return JSON.parse(brut.slice(0, i + 1) + "]}") as T;
+    } catch {
+      // on remonte à l'objet précédent
+    }
+  }
+  return null;
+}
+
 export async function redigerJson<T>(consigne: string, demande: string): Promise<T> {
   const dispos = fournisseurs();
   if (!dispos.length) {
@@ -62,7 +87,7 @@ export async function redigerJson<T>(consigne: string, demande: string): Promise
           body: JSON.stringify({
             model: modele,
             temperature: 0.8,
-            max_tokens: 3000,
+            max_tokens: 8000,
             messages: [
               { role: "system", content: consigne },
               { role: "user", content: demande },
@@ -80,7 +105,7 @@ export async function redigerJson<T>(consigne: string, demande: string): Promise
             body: JSON.stringify({
               model: modele,
               temperature: 0.8,
-              max_tokens: 3000,
+              max_tokens: 8000,
               messages: [
                 { role: "system", content: consigne },
                 { role: "user", content: demande },
@@ -94,14 +119,12 @@ export async function redigerJson<T>(consigne: string, demande: string): Promise
           erreurs.push(`${f.nom}/${modele} : ${j?.error?.message ?? `réponse ${r.status}`}`);
           continue;
         }
-        const texte: string = j.choices?.[0]?.message?.content ?? "";
-        const debut = texte.indexOf("{");
-        const fin = texte.lastIndexOf("}");
-        if (debut < 0 || fin < 0) {
-          erreurs.push(`${f.nom}/${modele} : réponse illisible`);
+        const objet = parseSouple<T>(j.choices?.[0]?.message?.content ?? "");
+        if (!objet) {
+          erreurs.push(`${f.nom}/${modele} : réponse illisible ou tronquée`);
           continue;
         }
-        return JSON.parse(texte.slice(debut, fin + 1)) as T;
+        return objet;
       } catch (e) {
         erreurs.push(`${f.nom}/${modele} : ${e instanceof Error ? e.message : "appel impossible"}`);
       }
