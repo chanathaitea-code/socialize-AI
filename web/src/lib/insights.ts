@@ -83,14 +83,16 @@ export async function mesuresPublicationFacebook(idPublication: string, jeton: s
   // Une photo publiée renvoie parfois l'identifiant de la photo et non celui de
   // la publication : les statistiques ne vivent que sur la publication.
   let postId = idPublication;
+  let noteResolution = "";
   if (!postId.includes("_")) {
     try {
       const j = await json(
         `${GRAPH}/${idPublication}?fields=page_story_id&access_token=${encodeURIComponent(jeton)}`
       );
       if (j?.page_story_id) postId = String(j.page_story_id);
-    } catch {
-      // on tentera avec l'identifiant d'origine
+      else noteResolution = "publication liée à la photo introuvable";
+    } catch (e) {
+      noteResolution = e instanceof Error ? e.message : "résolution impossible";
     }
   }
 
@@ -99,7 +101,7 @@ export async function mesuresPublicationFacebook(idPublication: string, jeton: s
     ["post_impressions", "post_impressions_unique"],
     ["post_views", "post_reach"],
   ]);
-  if (erreur) mesures.indisponible = erreur;
+  if (erreur) mesures.indisponible = [noteResolution, erreur].filter(Boolean).join(" · ");
   mesures.vues = somme(data, "post_impressions") ?? somme(data, "post_views");
   mesures.portee = somme(data, "post_impressions_unique") ?? somme(data, "post_reach");
   mesures.interactions = somme(data, "post_engaged_users");
