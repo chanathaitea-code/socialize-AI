@@ -38,12 +38,13 @@ export async function middleware(request: NextRequest) {
       path.startsWith("/reseaux") ||
       path.startsWith("/journal") ||
       path.startsWith("/analyse") ||
-      path.startsWith("/studio"))
+      path.startsWith("/studio") ||
+      path.startsWith("/jour"))
   ) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
   if (user && (path === "/login" || path === "/")) {
-    return NextResponse.redirect(new URL("/emplacements", request.url));
+    return NextResponse.redirect(new URL("/jour", request.url));
   }
   return response;
 }
@@ -59,5 +60,6 @@ export const config = {
     "/journal/:path*",
     "/analyse/:path*",
     "/studio/:path*",
+    "/jour/:path*",
   ],
 };

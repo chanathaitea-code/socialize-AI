@@ -3,6 +3,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { signOut } from "./emplacements/actions";
 
 const LIENS = [
+  { href: "/jour", label: "Aujourd\u2019hui" },
   { href: "/emplacements", label: "Emplacements" },
   { href: "/semaine", label: "Story de la semaine" },
   { href: "/marque", label: "Ma marque" },
