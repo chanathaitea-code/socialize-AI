@@ -1,17 +1,24 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { dechiffrer } from "./crypto";
 
-const GRAPH = "https://graph.facebook.com/v21.0";
+const GRAPH = "https://graph.facebook.com/v23.0";
 
 export type Mesures = {
+  // Instagram, tant que la story est en ligne
   vues?: number;
   portee?: number;
-  interactions?: number;
   reponses?: number;
-  jaime?: number;
-  commentaires?: number;
-  partages?: number;
+  // Facebook, disponible durablement
+  reactions?: number;
+  clics?: number;
   indisponible?: string;
+};
+
+export type MesuresPage = {
+  vuesPage?: number;
+  interactions?: number;
+  nouveauxAbonnes?: number;
+  erreur?: string;
 };
 
 async function json(url: string) {
@@ -21,101 +28,86 @@ async function json(url: string) {
   return j;
 }
 
-function somme(data: { name: string; values?: { value?: number }[] }[], nom: string): number | undefined {
-  const m = data.find((d) => d.name === nom);
-  const v = m?.values?.[0]?.value;
+type Serie = { name: string; values?: { value?: number | Record<string, number> }[] };
+
+function valeur(data: Serie[], nom: string): number | undefined {
+  const v = data.find((d) => d.name === nom)?.values?.[0]?.value;
   return typeof v === "number" ? v : undefined;
 }
 
+/** Certaines mesures renvoient un objet (réactions par type) : on additionne. */
+function total(data: Serie[], nom: string): number | undefined {
+  const v = data.find((d) => d.name === nom)?.values?.[0]?.value;
+  if (typeof v === "number") return v;
+  if (v && typeof v === "object") return Object.values(v).reduce((s, n) => s + (n ?? 0), 0);
+  return undefined;
+}
+
+/** Somme d'une série quotidienne sur toute la période renvoyée. */
+function sommeSerie(data: Serie[], nom: string): number | undefined {
+  const s = data.find((d) => d.name === nom);
+  if (!s?.values) return undefined;
+  return s.values.reduce((acc, p) => acc + (typeof p.value === "number" ? p.value : 0), 0);
+}
+
 /**
- * Meta renomme et retire des métriques d'une version à l'autre. Plutôt que de
- * tout perdre sur un nom invalide, on essaie plusieurs jeux, puis chaque
- * métrique séparément, et on garde ce qui répond.
+ * Meta a retiré les mesures d'impressions et de portée au niveau publication
+ * (post_impressions, post_engaged_users et compagnie). Restent les réactions
+ * et les clics, que l'on relève ici.
  */
-async function essayerMetriques(
-  base: string,
-  jeton: string,
-  jeux: string[][]
-): Promise<{ data: { name: string; values?: { value?: number }[] }[]; erreur?: string }> {
-  let derniere = "";
-  for (const jeu of jeux) {
-    try {
-      const j = await json(
-        `${GRAPH}/${base}/insights?metric=${jeu.join(",")}&access_token=${encodeURIComponent(jeton)}`
-      );
-      if (j.data?.length) return { data: j.data };
-    } catch (e) {
-      derniere = e instanceof Error ? e.message : "appel refusé";
-    }
-  }
-  // dernier recours : une métrique à la fois
-  const toutes = [...new Set(jeux.flat())];
-  const data: { name: string; values?: { value?: number }[] }[] = [];
-  for (const m of toutes) {
-    try {
-      const j = await json(`${GRAPH}/${base}/insights?metric=${m}&access_token=${encodeURIComponent(jeton)}`);
-      if (j.data?.length) data.push(...j.data);
-    } catch (e) {
-      derniere = e instanceof Error ? e.message : derniere;
-    }
-  }
-  return { data, erreur: data.length ? undefined : derniere };
-}
-
-/** Statistiques d'une story Instagram (valables tant que la story est en ligne). */
-export async function mesuresStoryInstagram(mediaId: string, jeton: string): Promise<Mesures> {
-  const { data, erreur } = await essayerMetriques(mediaId, jeton, [
-    ["views", "reach", "replies"],
-    ["impressions", "reach", "replies"],
-  ]);
-  if (erreur) return { indisponible: erreur };
-  return {
-    vues: somme(data, "views") ?? somme(data, "impressions"),
-    portee: somme(data, "reach"),
-    reponses: somme(data, "replies"),
-  };
-}
-
-/** Statistiques d'une publication de Page Facebook. */
-export async function mesuresPublicationFacebook(idPublication: string, jeton: string): Promise<Mesures> {
-  const mesures: Mesures = {};
-
-  // Une photo publiée renvoie parfois l'identifiant de la photo et non celui de
-  // la publication : les statistiques ne vivent que sur la publication.
-  let postId = idPublication;
-  let noteResolution = "";
-  if (!postId.includes("_")) {
-    try {
-      const j = await json(
-        `${GRAPH}/${idPublication}?fields=page_story_id&access_token=${encodeURIComponent(jeton)}`
-      );
-      if (j?.page_story_id) postId = String(j.page_story_id);
-      else noteResolution = "publication liée à la photo introuvable";
-    } catch (e) {
-      noteResolution = e instanceof Error ? e.message : "résolution impossible";
-    }
-  }
-
-  const { data, erreur } = await essayerMetriques(postId, jeton, [
-    ["post_impressions", "post_impressions_unique", "post_engaged_users"],
-    ["post_impressions", "post_impressions_unique"],
-    ["post_views", "post_reach"],
-  ]);
-  if (erreur) mesures.indisponible = [noteResolution, erreur].filter(Boolean).join(" · ");
-  mesures.vues = somme(data, "post_impressions") ?? somme(data, "post_views");
-  mesures.portee = somme(data, "post_impressions_unique") ?? somme(data, "post_reach");
-  mesures.interactions = somme(data, "post_engaged_users");
+export async function mesuresPublicationFacebook(postId: string, jeton: string): Promise<Mesures> {
   try {
     const j = await json(
-      `${GRAPH}/${postId}?fields=likes.summary(true),comments.summary(true),shares&access_token=${encodeURIComponent(jeton)}`
+      `${GRAPH}/${postId}/insights?metric=post_clicks,post_reactions_by_type_total&access_token=${encodeURIComponent(jeton)}`
     );
-    mesures.jaime = j?.likes?.summary?.total_count;
-    mesures.commentaires = j?.comments?.summary?.total_count;
-    mesures.partages = j?.shares?.count ?? 0;
-  } catch {
-    // les compteurs publics restent facultatifs
+    const d = (j.data ?? []) as Serie[];
+    return {
+      clics: valeur(d, "post_clicks"),
+      reactions: total(d, "post_reactions_by_type_total") ?? 0,
+    };
+  } catch (e) {
+    return { indisponible: e instanceof Error ? e.message : "statistiques indisponibles" };
   }
-  return mesures;
+}
+
+/** Statistiques d'une story Instagram, valables tant qu'elle est en ligne. */
+export async function mesuresStoryInstagram(mediaId: string, jeton: string): Promise<Mesures> {
+  for (const jeu of ["views,reach,replies", "impressions,reach,replies"]) {
+    try {
+      const j = await json(`${GRAPH}/${mediaId}/insights?metric=${jeu}&access_token=${encodeURIComponent(jeton)}`);
+      const d = (j.data ?? []) as Serie[];
+      if (d.length) {
+        return {
+          vues: valeur(d, "views") ?? valeur(d, "impressions"),
+          portee: valeur(d, "reach"),
+          reponses: valeur(d, "replies"),
+        };
+      }
+    } catch (e) {
+      const m = e instanceof Error ? e.message : "";
+      if (m.includes("does not exist")) {
+        return { indisponible: "story terminée : Instagram ne conserve pas ses statistiques" };
+      }
+    }
+  }
+  return { indisponible: "statistiques Instagram indisponibles" };
+}
+
+/** Vue d'ensemble de la Page sur les trente derniers jours. */
+export async function mesuresPage(pageId: string, jeton: string): Promise<MesuresPage> {
+  try {
+    const j = await json(
+      `${GRAPH}/${pageId}/insights?metric=page_views_total,page_post_engagements,page_daily_follows_unique&period=day&date_preset=last_30d&access_token=${encodeURIComponent(jeton)}`
+    );
+    const d = (j.data ?? []) as Serie[];
+    return {
+      vuesPage: sommeSerie(d, "page_views_total"),
+      interactions: sommeSerie(d, "page_post_engagements"),
+      nouveauxAbonnes: sommeSerie(d, "page_daily_follows_unique"),
+    };
+  } catch (e) {
+    return { erreur: e instanceof Error ? e.message : "statistiques de Page indisponibles" };
+  }
 }
 
 /**

@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
 import Nav from "../nav";
+import { dechiffrer } from "@/lib/crypto";
+import { mesuresPage } from "@/lib/insights";
 import { actualiser } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -9,11 +11,9 @@ export const maxDuration = 60;
 type Mesures = {
   vues?: number;
   portee?: number;
-  interactions?: number;
   reponses?: number;
-  jaime?: number;
-  commentaires?: number;
-  partages?: number;
+  reactions?: number;
+  clics?: number;
   indisponible?: string;
 };
 
@@ -72,10 +72,21 @@ export default async function AnalysePage({
   const total = (champ: keyof Mesures) =>
     lignes.reduce((s, l) => s + (typeof l.metrics?.[champ] === "number" ? (l.metrics[champ] as number) : 0), 0);
 
-  const vues = total("vues");
-  const portee = total("portee");
-  const interactions = total("interactions") + total("reponses") + total("jaime") + total("commentaires");
+  const vuesStories = total("vues");
+  const reactions = total("reactions");
   const derniere = lignes.find((l) => l.metrics_at)?.metrics_at;
+
+  // Vue d'ensemble de la Page : Meta ne donne plus la portée publication par
+  // publication, mais la garde au niveau de la Page.
+  const { data: compteFb } = await supabase
+    .from("social_accounts")
+    .select("external_id, encrypted_credentials")
+    .eq("platform", "facebook")
+    .limit(1)
+    .maybeSingle();
+  const page = compteFb
+    ? await mesuresPage(String(compteFb.external_id), dechiffrer(String(compteFb.encrypted_credentials)))
+    : { erreur: "Page non connectée" };
 
   return (
     <main className="min-h-screen bg-[#f4f4f1]">
@@ -102,9 +113,9 @@ export default async function AnalysePage({
 
         <div className="mt-6 grid grid-cols-3 gap-3">
           {[
-            { v: vues, l: "vues" },
-            { v: portee, l: "personnes touchées" },
-            { v: interactions, l: "interactions" },
+            { v: page.vuesPage ?? 0, l: "vues de la Page" },
+            { v: page.interactions ?? 0, l: "interactions" },
+            { v: page.nouveauxAbonnes ?? 0, l: "nouveaux abonnés" },
           ].map((c) => (
             <div key={c.l} className="bg-white border border-gray-200 rounded-xl p-5">
               <div className="text-3xl font-extrabold text-[#0f6b53] tabular-nums">{c.v}</div>
@@ -112,9 +123,11 @@ export default async function AnalysePage({
             </div>
           ))}
         </div>
-        {derniere && (
-          <p className="text-[11px] text-gray-400 mt-2">Dernier relevé {quand(derniere)}, actualisé automatiquement.</p>
-        )}
+        <p className="text-[11px] text-gray-400 mt-2">
+          Page Facebook, trente derniers jours{page.erreur ? ` · ${page.erreur}` : ""}
+          {derniere ? ` · dernier relevé ${quand(derniere)}` : ""}. Vos stories Instagram ont totalisé {vuesStories} vue
+          {vuesStories > 1 ? "s" : ""} et vos publications {reactions} réaction{reactions > 1 ? "s" : ""}.
+        </p>
 
         <div className="mt-7">
           <div className="text-[11px] font-bold uppercase tracking-wide text-gray-500 mb-2">Publication par publication</div>
@@ -136,12 +149,18 @@ export default async function AnalysePage({
                     {l.caption && <p className="text-xs text-gray-500 mt-1 line-clamp-2">{l.caption}</p>}
                   </div>
                   <div className="flex gap-4 items-start">
-                    <Chiffre valeur={l.metrics?.vues} libelle="vues" />
-                    <Chiffre valeur={l.metrics?.portee} libelle="touchées" />
+                    {l.platform === "instagram" ? (
+                      <>
+                        <Chiffre valeur={l.metrics?.vues} libelle="vues" />
+                        <Chiffre valeur={l.metrics?.portee} libelle="touchées" />
+                      </>
+                    ) : (
+                      <Chiffre valeur={l.metrics?.reactions} libelle="réactions" />
+                    )}
                     {l.platform === "instagram" ? (
                       <Chiffre valeur={l.metrics?.reponses} libelle="réponses" />
                     ) : (
-                      <Chiffre valeur={l.metrics?.jaime} libelle="j'aime" />
+                      <Chiffre valeur={l.metrics?.clics} libelle="clics" />
                     )}
                   </div>
                   {l.metrics?.indisponible && (
@@ -154,8 +173,9 @@ export default async function AnalysePage({
         </div>
 
         <p className="text-xs text-gray-400 mt-6">
-          Une story Instagram ne rend ses chiffres que pendant sa durée de vie : c&apos;est pour cela que le relevé tourne
-          tout seul toutes les cinq minutes tant que la story est en ligne.
+          Une story Instagram ne rend ses chiffres que pendant sa durée de vie, d&apos;où le relevé automatique toutes les
+          cinq minutes. Côté Facebook, Meta a supprimé la portée publication par publication : elle n&apos;existe plus
+          qu&apos;au niveau de la Page, d&apos;où les trois compteurs du haut.
         </p>
       </div>
     </main>
