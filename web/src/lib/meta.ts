@@ -11,16 +11,21 @@ export const SCOPES = [
   "business_management",
 ].join(",");
 
+/**
+ * Avec « Facebook Login for Business », les permissions ne se demandent plus
+ * par une liste de scopes : elles sont portées par une configuration créée
+ * côté Meta. Passer scope en même temps déclenche « Invalid Scopes ».
+ */
 export function urlAutorisation(redirectUri: string, etat: string): string {
   const p = new URLSearchParams({
     client_id: process.env.META_APP_ID ?? "",
     redirect_uri: redirectUri,
     state: etat,
     response_type: "code",
-    scope: SCOPES,
   });
   const config = process.env.META_LOGIN_CONFIG_ID;
   if (config) p.set("config_id", config);
+  else p.set("scope", SCOPES);
   return `https://www.facebook.com/v21.0/dialog/oauth?${p.toString()}`;
 }
 
