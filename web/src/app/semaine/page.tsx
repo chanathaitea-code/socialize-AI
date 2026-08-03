@@ -6,6 +6,8 @@ import PhotoUploader from "./photo-uploader";
 import { deletePhoto, publierStory } from "./actions";
 
 export const dynamic = "force-dynamic";
+// La publication Instagram attend qu'Instagram ait fini de télécharger l'image
+export const maxDuration = 60;
 
 const JOURS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
 const COURT = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
