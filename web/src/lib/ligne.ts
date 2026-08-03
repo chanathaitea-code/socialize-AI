@@ -146,6 +146,81 @@ Publications des deux derniers mois : ${publiees.length}
   return { ...plan, contenus };
 }
 
+/**
+ * Établit et enregistre la ligne éditoriale d'un mois. Partagé par le bouton de
+ * l'écran Calendrier et par la tâche planifiée du 1er du mois.
+ */
+export async function enregistrerPlan(
+  supabase: SupabaseClient,
+  brandId: string,
+  mois: Date
+): Promise<{ theme: string; nombre: number }> {
+  const cle = iso(mois);
+  const plan = await construirePlan(supabase, brandId, mois);
+  if (!plan.contenus.length) throw new Error("le modèle n'a rien proposé");
+
+  const { data: produits } = await supabase
+    .from("products")
+    .select("name, price_cents")
+    .eq("brand_id", brandId);
+  const prixConnus = new Set(
+    (produits ?? [])
+      .filter((p) => p.price_cents)
+      .map((p) => (p.price_cents! / 100).toFixed(2).replace(".", ",").replace(",00", ""))
+  );
+
+  const { data: brands } = await supabase.from("brands").select("brand_brief").eq("id", brandId).limit(1);
+  const brief = ((brands?.[0]?.brand_brief ?? {}) as Record<string, string>) ?? {};
+  const interdits = (brief.interdits ?? "")
+    .split(/[,;\n]/)
+    .map((m) => m.trim().toLowerCase())
+    .filter((m) => m.length > 2);
+
+  // Refaire un mois efface les projets, jamais ce qui est déjà programmé ou parti.
+  await supabase
+    .from("editorial_items")
+    .delete()
+    .eq("brand_id", brandId)
+    .eq("mois", cle)
+    .in("statut", ["prevu", "garde", "rejete"]);
+
+  const lignes = plan.contenus.map((c) => {
+    const jour = new Date(mois);
+    jour.setUTCDate(Number(c.jour));
+    return {
+      brand_id: brandId,
+      mois: cle,
+      jour: iso(jour),
+      format: (c.format ?? "story").toLowerCase(),
+      gabarit: (c.gabarit ?? "libre").toLowerCase(),
+      rubrique: c.rubrique ?? null,
+      objectif: c.objectif ?? null,
+      accroche: c.accroche ?? null,
+      texte: c.texte ?? null,
+      hashtags: c.hashtags ?? null,
+      conseil: c.conseil ?? null,
+      alertes: verifier(`${c.accroche ?? ""} ${c.texte ?? ""}`, prixConnus, interdits),
+    };
+  });
+
+  const { error } = await supabase.from("editorial_items").insert(lignes);
+  if (error) throw new Error(error.message);
+
+  await supabase.from("editorial_months").upsert(
+    {
+      brand_id: brandId,
+      mois: cle,
+      theme: plan.theme ?? null,
+      produit_phare: plan.produitPhare ?? null,
+      objectif: plan.objectif ?? null,
+      lecture: plan.lecture ?? null,
+    },
+    { onConflict: "brand_id,mois" }
+  );
+
+  return { theme: plan.theme ?? "", nombre: lignes.length };
+}
+
 /** Garde-fous partagés : prix inventés et mots que la marque s'interdit. */
 export function verifier(
   texte: string,

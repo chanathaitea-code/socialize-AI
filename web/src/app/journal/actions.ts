@@ -97,3 +97,44 @@ export async function basculerPause(formData: FormData) {
   revalidatePath("/emplacements");
   redirect(`/journal?ok=${enPause ? "Publications%20r%C3%A9activ%C3%A9es" : "Tout%20est%20en%20pause"}`);
 }
+
+/** Bascule une règle du pilote automatique. */
+export async function basculerRegle(formData: FormData) {
+  const supabase = await supabaseServer();
+  const champ = String(formData.get("champ") ?? "");
+  const actif = String(formData.get("actif") ?? "false") === "true";
+  const autorises = ["ligne_auto", "rebours_enabled", "plat_enabled", "envie_enabled", "calendrier_auto"];
+  if (!autorises.includes(champ)) redirect("/journal?err=R%C3%A8gle%20inconnue");
+
+  const { data: brands } = await supabase.from("brands").select("id").limit(1);
+  const brandId = brands?.[0]?.id as string | undefined;
+  if (!brandId) redirect("/journal?err=Marque%20introuvable");
+
+  const { error } = await supabase
+    .from("story_auto")
+    .upsert({ brand_id: brandId, [champ]: !actif }, { onConflict: "brand_id" });
+  if (error) redirect(`/journal?err=${encodeURIComponent(error.message)}`);
+  revalidatePath("/journal");
+  redirect(`/journal?ok=${actif ? "R%C3%A8gle%20coup%C3%A9e" : "R%C3%A8gle%20activ%C3%A9e"}`);
+}
+
+/** Règle le délai d'annulation et les réseaux du pilote automatique. */
+export async function reglerPilote(formData: FormData) {
+  const supabase = await supabaseServer();
+  const delai = Math.max(5, Math.min(120, parseInt(String(formData.get("delai") ?? "30"), 10) || 30));
+  const cibles = [
+    formData.get("instagram") === "on" ? "instagram" : null,
+    formData.get("facebook") === "on" ? "facebook" : null,
+  ].filter(Boolean) as string[];
+  const { data: brands } = await supabase.from("brands").select("id").limit(1);
+  const brandId = brands?.[0]?.id as string | undefined;
+  if (!brandId) redirect("/journal?err=Marque%20introuvable");
+  if (!cibles.length) redirect("/journal?err=Choisissez%20au%20moins%20un%20r%C3%A9seau");
+
+  const { error } = await supabase
+    .from("story_auto")
+    .upsert({ brand_id: brandId, auto_grace: delai, auto_targets: cibles }, { onConflict: "brand_id" });
+  if (error) redirect(`/journal?err=${encodeURIComponent(error.message)}`);
+  revalidatePath("/journal");
+  redirect("/journal?ok=R%C3%A9glages%20enregistr%C3%A9s");
+}

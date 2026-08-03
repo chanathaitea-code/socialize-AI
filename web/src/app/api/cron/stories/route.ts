@@ -7,6 +7,7 @@ import { publierMedia } from "@/lib/publier-media";
 import { dechiffrer } from "@/lib/crypto";
 import { publierLaJournee } from "@/lib/publier-jour";
 import { construireRapport, premierDuMois } from "@/lib/rapport";
+import { pilote } from "@/lib/auto";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -128,6 +129,15 @@ export async function GET(req: NextRequest) {
     } catch (e) {
       journal.push(`story du matin en échec : ${e instanceof Error ? e.message : "erreur"}`);
     }
+  }
+
+  // 1 ter. Pilote automatique : ligne éditoriale, compte à rebours, plat à
+  // l'honneur, jours sans service, contenus du calendrier. Toutes ces règles
+  // fabriquent des envois programmés, annulables depuis le Journal.
+  try {
+    journal.push(...(await pilote(supabase, enPause)));
+  } catch (e) {
+    journal.push(`pilote automatique en échec : ${e instanceof Error ? e.message : "erreur"}`);
   }
 
   // 2. Envois arrivés à échéance

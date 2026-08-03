@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
 import Nav from "../nav";
-import { annulerEnvoi, basculerHebdo, basculerPause, supprimerPublication } from "./actions";
+import { annulerEnvoi, basculerHebdo, basculerPause, basculerRegle, reglerPilote, supprimerPublication } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -69,8 +69,38 @@ export default async function JournalPage({
     .limit(30);
   const lignes = (logData ?? []) as Ligne[];
 
-  const { data: autoData } = await supabase.from("story_auto").select("enabled").limit(1);
-  const hebdoActif = autoData?.[0]?.enabled ?? false;
+  const { data: autoData } = await supabase.from("story_auto").select("*").limit(1);
+  const reglagesAuto = (autoData?.[0] ?? {}) as Record<string, unknown>;
+  const hebdoActif = Boolean(reglagesAuto.enabled ?? false);
+
+  // Le pilote automatique : chaque règle prépare un envoi, jamais une publication directe
+  const REGLES = [
+    {
+      champ: "ligne_auto",
+      titre: "Ligne éditoriale du mois",
+      quoi: "Le 1er de chaque mois à 8h, le calendrier du mois s'établit tout seul à partir de vos emplacements et de la saison. Rien n'est publié : c'est du travail préparé.",
+    },
+    {
+      champ: "rebours_enabled",
+      titre: "Compte à rebours avant chaque service",
+      quoi: "Une story « on ouvre dans 1h » part une heure avant chaque service, avec le lieu et l'horaire du jour. C'est le moment où les gens choisissent où déjeuner.",
+    },
+    {
+      champ: "plat_enabled",
+      titre: "Plat à l'honneur, mardi et vendredi",
+      quoi: "Deux fois par semaine à 11h, une story sur un plat de votre carte, avec son prix et votre dernière photo. Les plats tournent, sans se répéter.",
+    },
+    {
+      champ: "envie_enabled",
+      titre: "Les jours sans service",
+      quoi: "À midi, les jours où le camion ne sort pas, une story qui donne envie et qui donne rendez-vous au prochain service. Ne jamais disparaître des fils.",
+    },
+    {
+      champ: "calendrier_auto",
+      titre: "Les contenus du calendrier",
+      quoi: "La veille au soir, chaque contenu prévu au calendrier pour le lendemain est fabriqué et mis en attente pour 11h30.",
+    },
+  ] as const;
 
   const { data: reglages } = await supabase.from("automation_settings").select("mode").limit(1);
   const enPause = reglages?.[0]?.mode === "paused";
@@ -138,6 +168,83 @@ export default async function JournalPage({
             {hebdoActif ? "Couper" : "Activer"}
           </button>
         </form>
+
+        <section className="mt-6 rounded-xl border border-[#c8e2da] bg-white p-5">
+          <div className="font-bold text-[#12211c]">Pilote automatique</div>
+          <p className="text-sm text-gray-500 mt-1">
+            Ce que l&apos;application fait sans rien vous demander. Chaque règle prépare un envoi et le laisse en
+            attente : vous avez {String(reglagesAuto.auto_grace ?? 30)} minutes pour le couper ici avant qu&apos;il ne
+            parte.
+          </p>
+
+          <div className="grid gap-2 mt-4">
+            {REGLES.map((regle) => {
+              const actif = Boolean(reglagesAuto[regle.champ] ?? false);
+              return (
+                <form
+                  key={regle.champ}
+                  action={basculerRegle}
+                  className={`rounded-lg border p-4 flex items-start gap-3 flex-wrap ${
+                    actif ? "border-[#0f6b53] bg-[#f5faf8]" : "border-gray-200"
+                  }`}
+                >
+                  <input type="hidden" name="champ" value={regle.champ} />
+                  <input type="hidden" name="actif" value={String(actif)} />
+                  <div className="flex-1 min-w-[240px]">
+                    <div className="text-sm font-semibold text-[#12211c]">{regle.titre}</div>
+                    <div className="text-xs text-gray-500 mt-1 leading-relaxed">{regle.quoi}</div>
+                  </div>
+                  <span
+                    className={`text-[10px] font-bold uppercase rounded-full px-3 py-1 ${
+                      actif ? "bg-[#e5f2ee] text-[#0f6b53]" : "bg-gray-100 text-gray-500"
+                    }`}
+                  >
+                    {actif ? "active" : "coupée"}
+                  </span>
+                  <button className="text-xs border border-gray-300 rounded-lg px-3 py-1.5 font-semibold hover:border-[#0f6b53] hover:text-[#0f6b53]">
+                    {actif ? "Couper" : "Activer"}
+                  </button>
+                </form>
+              );
+            })}
+          </div>
+
+          <form action={reglerPilote} className="mt-4 pt-4 border-t border-gray-100 flex items-center gap-4 flex-wrap text-sm">
+            <label className="flex items-center gap-2">
+              Délai d&apos;annulation
+              <input
+                type="number"
+                name="delai"
+                min={5}
+                max={120}
+                defaultValue={String(reglagesAuto.auto_grace ?? 30)}
+                className="w-20 border border-gray-300 rounded-lg px-2 py-1.5"
+              />
+              minutes
+            </label>
+            <label className="flex items-center gap-1.5">
+              <input
+                type="checkbox"
+                name="instagram"
+                defaultChecked={((reglagesAuto.auto_targets as string[]) ?? ["instagram"]).includes("instagram")}
+                className="w-4 h-4 accent-[#0f6b53]"
+              />
+              Instagram
+            </label>
+            <label className="flex items-center gap-1.5">
+              <input
+                type="checkbox"
+                name="facebook"
+                defaultChecked={((reglagesAuto.auto_targets as string[]) ?? []).includes("facebook")}
+                className="w-4 h-4 accent-[#0f6b53]"
+              />
+              Facebook
+            </label>
+            <button className="border border-gray-300 rounded-lg px-3 py-1.5 font-semibold hover:border-[#0f6b53] hover:text-[#0f6b53]">
+              Enregistrer
+            </button>
+          </form>
+        </section>
 
         {jobs.length > 0 && (
           <div className="mt-6">
