@@ -37,7 +37,8 @@ export async function middleware(request: NextRequest) {
       path.startsWith("/marque") ||
       path.startsWith("/reseaux") ||
       path.startsWith("/journal") ||
-      path.startsWith("/analyse"))
+      path.startsWith("/analyse") ||
+      path.startsWith("/studio"))
   ) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
@@ -57,5 +58,6 @@ export const config = {
     "/reseaux/:path*",
     "/journal/:path*",
     "/analyse/:path*",
+    "/studio/:path*",
   ],
 };

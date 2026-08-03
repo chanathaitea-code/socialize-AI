@@ -7,6 +7,7 @@ const LIENS = [
   { href: "/marque", label: "Ma marque" },
   { href: "/reseaux", label: "Mes réseaux" },
   { href: "/journal", label: "Journal" },
+  { href: "/studio", label: "Studio" },
   { href: "/analyse", label: "Analyse" },
 ];
 
