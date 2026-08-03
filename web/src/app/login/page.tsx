@@ -94,14 +94,14 @@ export default function LoginPage() {
           </button>
         </form>
         <p className="text-center text-xs text-gray-400 mt-4">Phase 0 · pilote Chana Thaï</p>
+        <p className="text-center text-xs text-gray-400 mt-2">
+          <a href="/confidentialite" className="underline hover:text-[#0f6b53]">Confidentialité</a>
+          {" · "}
+          <a href="/conditions" className="underline hover:text-[#0f6b53]">Conditions</a>
+          {" · "}
+          <a href="/suppression-donnees" className="underline hover:text-[#0f6b53]">Supprimer mes données</a>
+        </p>
       </div>
-          <p className="text-center text-xs text-gray-400 pb-6">
-        <a href="/confidentialite" className="underline hover:text-[#0f6b53]">Confidentialité</a>
-        {" · "}
-        <a href="/conditions" className="underline hover:text-[#0f6b53]">Conditions</a>
-        {" · "}
-        <a href="/suppression-donnees" className="underline hover:text-[#0f6b53]">Supprimer mes données</a>
-      </p>
 </main>
   );
 }
