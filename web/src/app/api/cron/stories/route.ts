@@ -6,6 +6,7 @@ import { rafraichirMesures } from "@/lib/insights";
 import { publierMedia } from "@/lib/publier-media";
 import { dechiffrer } from "@/lib/crypto";
 import { publierLaJournee } from "@/lib/publier-jour";
+import { construireRapport, premierDuMois } from "@/lib/rapport";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -194,6 +195,38 @@ export async function GET(req: NextRequest) {
       if (n) journal.push(`${n} statistique(s) relevée(s)`);
     } catch {
       // un relevé raté n'empêche pas le reste
+    }
+  }
+
+  // 3 bis. Rapport mensuel, le 1er du mois à 9h
+  const dateParis = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Paris",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+  if (dateParis.endsWith("-01") && heure === 9) {
+    const moisPrecedent = premierDuMois(-1);
+    const cle = moisPrecedent.toISOString().slice(0, 10);
+    const { data: marquesR } = await supabase.from("brands").select("id").limit(20);
+    for (const m of marquesR ?? []) {
+      const { data: deja } = await supabase
+        .from("monthly_reports")
+        .select("id")
+        .eq("brand_id", m.id)
+        .eq("mois", cle)
+        .maybeSingle();
+      if (deja) continue;
+      try {
+        const rapport = await construireRapport(supabase, m.id, moisPrecedent);
+        await supabase.from("monthly_reports").upsert(
+          { brand_id: m.id, mois: cle, contenu: rapport },
+          { onConflict: "brand_id,mois" }
+        );
+        journal.push(`rapport ${rapport.intitule} établi`);
+      } catch (e) {
+        journal.push(`rapport en échec : ${e instanceof Error ? e.message : "erreur"}`);
+      }
     }
   }
 

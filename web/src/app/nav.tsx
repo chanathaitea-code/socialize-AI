@@ -11,6 +11,7 @@ const LIENS = [
   { href: "/journal", label: "Journal" },
   { href: "/studio", label: "Studio" },
   { href: "/analyse", label: "Analyse" },
+  { href: "/rapport", label: "Rapport" },
 ];
 
 export default async function Nav({ actif }: { actif: string }) {
