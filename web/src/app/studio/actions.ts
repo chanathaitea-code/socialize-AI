@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
-import { clampWeek, iso, libellePeriode, mondayOf } from "@/lib/semaine";
+import { clampWeek, depuisSaisieParis, iso, libellePeriode, mondayOf } from "@/lib/semaine";
 import { legendeJours, lignesSemaine, type Slot } from "@/lib/story";
 import { redigerJson } from "@/lib/ia";
 
@@ -186,7 +186,7 @@ export async function programmerIdee(formData: FormData) {
   }
 
   const legende = [idee.accroche, idee.texte, idee.hashtags].filter(Boolean).join("\n\n");
-  const depart = quand ? new Date(quand) : new Date(Date.now() + 10 * 60_000);
+  const depart = quand ? depuisSaisieParis(quand) : new Date(Date.now() + 10 * 60_000);
   if (Number.isNaN(depart.getTime())) retour("err=Date%20invalide");
 
   const { error } = await supabase.from("story_jobs").insert({

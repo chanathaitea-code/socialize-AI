@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
-import { clampWeek, iso, libellePeriode, mondayOf } from "@/lib/semaine";
+import { clampWeek, iso, libellePeriode, mondayOf, versSaisieParis } from "@/lib/semaine";
 import Nav from "../nav";
 import { changerStatut, genererSemaine, programmerIdee, supprimerIdee } from "./actions";
 
@@ -61,8 +61,7 @@ export default async function StudioPage({
     url: supabase.storage.from("media").getPublicUrl(m.storage_path as string).data.publicUrl,
   }));
 
-  const defaut = new Date(Date.now() + 60 * 60_000);
-  const parDefaut = new Date(defaut.getTime() - defaut.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
+  const parDefaut = versSaisieParis(new Date(Date.now() + 60 * 60_000));
 
   return (
     <main className="min-h-screen bg-[#f4f4f1]">

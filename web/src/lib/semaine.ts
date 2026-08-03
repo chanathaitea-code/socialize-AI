@@ -32,3 +32,43 @@ export function libellePeriode(monday: Date): string {
     ? `du ${monday.getUTCDate()} au ${sunday.getUTCDate()} ${MOIS[sunday.getUTCMonth()]}`
     : `du ${monday.getUTCDate()} ${MOIS[monday.getUTCMonth()]} au ${sunday.getUTCDate()} ${MOIS[sunday.getUTCMonth()]}`;
 }
+
+/** Décalage de Paris (en millisecondes) à un instant donné. */
+function decalageParis(d: Date): number {
+  const f = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Europe/Paris",
+    hour12: false,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+  const p = Object.fromEntries(f.formatToParts(d).map((x) => [x.type, x.value]));
+  const commeUtc = Date.UTC(
+    Number(p.year),
+    Number(p.month) - 1,
+    Number(p.day),
+    Number(p.hour) % 24,
+    Number(p.minute),
+    Number(p.second)
+  );
+  return commeUtc - d.getTime();
+}
+
+/**
+ * Une saisie « 2026-08-03T11:42 » vient d'un champ date-heure du navigateur :
+ * l'utilisateur pense en heure de Paris. Le serveur, lui, vit en UTC : sans
+ * cette conversion, l'envoi partait deux heures trop tard.
+ */
+export function depuisSaisieParis(saisie: string): Date {
+  const naif = new Date(saisie + ":00Z");
+  if (Number.isNaN(naif.getTime())) return new Date(NaN);
+  return new Date(naif.getTime() - decalageParis(naif));
+}
+
+/** L'inverse : pré-remplir un champ date-heure avec une heure de Paris. */
+export function versSaisieParis(d: Date): string {
+  return new Date(d.getTime() + decalageParis(d)).toISOString().slice(0, 16);
+}
