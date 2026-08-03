@@ -5,6 +5,7 @@ const LIENS = [
   { href: "/emplacements", label: "Emplacements" },
   { href: "/semaine", label: "Story de la semaine" },
   { href: "/marque", label: "Ma marque" },
+  { href: "/reseaux", label: "Mes réseaux" },
 ];
 
 export default function Nav({ actif }: { actif: string }) {
