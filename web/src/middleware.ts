@@ -40,12 +40,16 @@ export async function middleware(request: NextRequest) {
       path.startsWith("/analyse") ||
       path.startsWith("/studio") ||
       path.startsWith("/jour") ||
+      path.startsWith("/tableau") ||
+      path.startsWith("/calendrier") ||
+      path.startsWith("/stories") ||
+      path.startsWith("/design") ||
       path.startsWith("/rapport"))
   ) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
   if (user && (path === "/login" || path === "/")) {
-    return NextResponse.redirect(new URL("/jour", request.url));
+    return NextResponse.redirect(new URL("/tableau", request.url));
   }
   return response;
 }
@@ -62,6 +66,10 @@ export const config = {
     "/analyse/:path*",
     "/studio/:path*",
     "/jour/:path*",
+    "/tableau/:path*",
+    "/calendrier/:path*",
+    "/stories/:path*",
+    "/design/:path*",
     "/rapport/:path*",
   ],
 };

@@ -2,20 +2,22 @@ import Link from "next/link";
 import { supabaseServer } from "@/lib/supabase/server";
 import { signOut } from "./emplacements/actions";
 
-const LIENS = [
-  { href: "/jour", label: "Aujourd\u2019hui" },
-  { href: "/calendrier", label: "Calendrier" },
-  { href: "/emplacements", label: "Emplacements" },
-  { href: "/stories", label: "Stories" },
-  { href: "/semaine", label: "Semaine" },
-  { href: "/design", label: "Design" },
-  { href: "/studio", label: "Studio" },
-  { href: "/journal", label: "Journal" },
-  { href: "/analyse", label: "Analyse" },
-  { href: "/rapport", label: "Rapport" },
-  { href: "/marque", label: "Ma marque" },
-  { href: "/reseaux", label: "Mes réseaux" },
-];
+/** Le titre de chaque écran, affiché dans la barre du haut. */
+const TITRES: Record<string, string> = {
+  "/tableau": "Tableau de bord",
+  "/jour": "Aujourd’hui",
+  "/calendrier": "Calendrier",
+  "/emplacements": "Emplacements",
+  "/studio": "Studio de création",
+  "/stories": "Stories",
+  "/semaine": "Story de la semaine",
+  "/design": "Design et photos",
+  "/journal": "Journal",
+  "/analyse": "Analyse",
+  "/rapport": "Rapport",
+  "/marque": "Ma marque",
+  "/reseaux": "Mes réseaux",
+};
 
 export default async function Nav({ actif }: { actif: string }) {
   // Deux situations méritent d'être visibles depuis n'importe quel écran :
@@ -30,26 +32,22 @@ export default async function Nav({ actif }: { actif: string }) {
 
   return (
     <>
-    <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center gap-4 flex-wrap">
-      <h1 className="font-extrabold text-[#12211c]">
-        Social<span className="text-[#0f6b53]">Flow</span> AI
-      </h1>
-      <nav className="flex gap-3 text-sm">
-        {LIENS.map((l) =>
-          l.href === actif ? (
-            <span key={l.href} className="font-semibold text-[#0f6b53]">
-              {l.label}
-            </span>
-          ) : (
-            <Link key={l.href} href={l.href} className="text-gray-500 hover:text-[#0f6b53]">
-              {l.label}
-            </Link>
-          )
-        )}
-      </nav>
-      <form action={signOut} className="ml-auto">
-        <button className="text-sm text-gray-500 hover:text-red-600">Déconnexion</button>
-      </form>
+      <header className="bg-white border-b border-gray-200 px-6 py-3.5 flex items-center gap-3 flex-wrap">
+        <h2 className="font-bold text-[#12211c] text-[17px]">{TITRES[actif] ?? "SocialFlow AI"}</h2>
+        <span
+          className={`text-[11px] font-semibold rounded-full px-3 py-1 flex items-center gap-1.5 ${
+            enPause ? "bg-amber-100 text-amber-900" : "bg-[#e5f2ee] text-[#0f6b53]"
+          }`}
+        >
+          <span className={`w-1.5 h-1.5 rounded-full ${enPause ? "bg-amber-500" : "bg-[#0f6b53]"}`} />
+          {enPause ? "En pause" : "Mode semi-automatique"}
+        </span>
+        <Link href="/journal" className="text-xs text-gray-400 hover:text-[#0f6b53]">
+          {enPause ? "relancer" : "régler"}
+        </Link>
+        <form action={signOut} className="ml-auto">
+          <button className="text-sm text-gray-400 hover:text-red-600">Déconnexion</button>
+        </form>
       </header>
 
       {enPause && (
