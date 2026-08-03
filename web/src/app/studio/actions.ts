@@ -149,3 +149,62 @@ export async function supprimerIdee(formData: FormData) {
   await supabase.from("content_ideas").delete().eq("id", id);
   revalidatePath("/studio");
 }
+
+/**
+ * Transforme une proposition en publication : tout de suite ou à l'heure
+ * choisie, avec la photo sélectionnée dans la bibliothèque.
+ */
+export async function programmerIdee(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  const media = String(formData.get("media") ?? "");
+  const quand = String(formData.get("quand") ?? "");
+  const format = String(formData.get("format") ?? "post");
+  const cibles = [
+    formData.get("instagram") === "on" ? "instagram" : null,
+    formData.get("facebook") === "on" ? "facebook" : null,
+  ].filter(Boolean) as string[];
+
+  const retour = (p: string) => redirect(`/studio?${p}`);
+  if (!id) return;
+  if (!media) retour("err=Choisissez%20une%20photo");
+  if (!cibles.length) retour("err=Choisissez%20au%20moins%20un%20r%C3%A9seau");
+
+  const supabase = await supabaseServer();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { data: idee } = await supabase
+    .from("content_ideas")
+    .select("id, brand_id, accroche, texte, hashtags, monday, format")
+    .eq("id", id)
+    .single();
+  if (!idee) {
+    retour("err=Proposition%20introuvable");
+    return;
+  }
+
+  const legende = [idee.accroche, idee.texte, idee.hashtags].filter(Boolean).join("\n\n");
+  const depart = quand ? new Date(quand) : new Date(Date.now() + 10 * 60_000);
+  if (Number.isNaN(depart.getTime())) retour("err=Date%20invalide");
+
+  const { error } = await supabase.from("story_jobs").insert({
+    brand_id: idee.brand_id,
+    run_at: depart.toISOString(),
+    monday: idee.monday,
+    kind: "photo",
+    format,
+    idea_id: idee.id,
+    media_path: media,
+    caption: legende,
+    targets: cibles,
+    origin: "manuel",
+  });
+  if (error) retour(`err=${encodeURIComponent(error.message)}`);
+
+  await supabase.from("content_ideas").update({ statut: "publie" }).eq("id", id);
+  revalidatePath("/studio");
+  revalidatePath("/journal");
+  retour(`ok=${encodeURIComponent(`Publication programmée le ${depart.toLocaleString("fr-FR", { timeZone: "Europe/Paris", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}, annulable depuis le journal`)}`);
+}

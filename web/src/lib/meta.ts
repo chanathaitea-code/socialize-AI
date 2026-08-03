@@ -124,6 +124,26 @@ export async function publierStoryInstagram(igUserId: string, jetonPage: string,
   return publie.id;
 }
 
+/** Publie une photo dans le fil Instagram, avec sa légende. */
+export async function publierPhotoInstagram(
+  igUserId: string,
+  jetonPage: string,
+  imageUrl: string,
+  legende: string
+) {
+  const conteneur = await graphPost<{ id: string }>(`${igUserId}/media`, {
+    image_url: imageUrl,
+    caption: legende,
+    access_token: jetonPage,
+  });
+  await attendreConteneur(conteneur.id, jetonPage);
+  const publie = await graphPost<{ id: string }>(`${igUserId}/media_publish`, {
+    creation_id: conteneur.id,
+    access_token: jetonPage,
+  });
+  return publie.id;
+}
+
 /** Publie une photo sur la Page Facebook, avec sa légende. */
 export async function publierPhotoFacebook(pageId: string, jetonPage: string, imageUrl: string, message: string) {
   const r = await graphPost<{ id: string; post_id?: string }>(`${pageId}/photos`, {

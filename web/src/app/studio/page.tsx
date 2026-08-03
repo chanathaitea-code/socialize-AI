@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
 import { clampWeek, iso, libellePeriode, mondayOf } from "@/lib/semaine";
 import Nav from "../nav";
-import { changerStatut, genererSemaine, supprimerIdee } from "./actions";
+import { changerStatut, genererSemaine, programmerIdee, supprimerIdee } from "./actions";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -49,6 +49,20 @@ export default async function StudioPage({
     .neq("statut", "rejete")
     .order("created_at", { ascending: false });
   const idees = (data ?? []) as Idee[];
+
+  const { data: medias } = await supabase
+    .from("media_assets")
+    .select("storage_path")
+    .eq("kind", "photo")
+    .order("created_at", { ascending: false })
+    .limit(12);
+  const photos = (medias ?? []).map((m) => ({
+    chemin: m.storage_path as string,
+    url: supabase.storage.from("media").getPublicUrl(m.storage_path as string).data.publicUrl,
+  }));
+
+  const defaut = new Date(Date.now() + 60 * 60_000);
+  const parDefaut = new Date(defaut.getTime() - defaut.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
 
   return (
     <main className="min-h-screen bg-[#f4f4f1]">
@@ -136,6 +150,67 @@ export default async function StudioPage({
                       ))}
                     </div>
                   )}
+
+                  <details className="mt-4 pt-3 border-t border-gray-100">
+                    <summary className="text-xs font-semibold text-[#0f6b53] cursor-pointer">
+                      Publier cette proposition
+                    </summary>
+                    {photos.length === 0 ? (
+                      <p className="text-xs text-gray-500 mt-3">
+                        Aucune photo dans la bibliothèque. Envoyez-en une depuis l&apos;écran Story de la semaine, elles
+                        sont partagées.
+                      </p>
+                    ) : (
+                      <form action={programmerIdee} className="mt-3 space-y-3">
+                        <input type="hidden" name="id" value={i.id} />
+                        <div className="flex gap-2 flex-wrap">
+                          {photos.map((ph, n) => (
+                            <label key={ph.chemin} className="cursor-pointer">
+                              <input
+                                type="radio"
+                                name="media"
+                                value={ph.chemin}
+                                defaultChecked={n === 0}
+                                className="sr-only peer"
+                              />
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={ph.url}
+                                alt=""
+                                className="w-14 h-14 object-cover rounded-lg border-2 border-gray-200 peer-checked:border-[#0f6b53]"
+                              />
+                            </label>
+                          ))}
+                        </div>
+                        <div className="flex gap-3 items-center flex-wrap text-sm">
+                          <select name="format" defaultValue={i.format === "story" ? "story" : "post"} className="border border-gray-300 rounded-lg px-2 py-1.5 bg-white">
+                            <option value="post">Publication dans le fil</option>
+                            <option value="story">Story</option>
+                          </select>
+                          <input
+                            type="datetime-local"
+                            name="quand"
+                            defaultValue={parDefaut}
+                            className="border border-gray-300 rounded-lg px-2 py-1.5"
+                          />
+                          <label className="flex items-center gap-1.5">
+                            <input type="checkbox" name="instagram" defaultChecked className="w-4 h-4 accent-[#0f6b53]" />
+                            Instagram
+                          </label>
+                          <label className="flex items-center gap-1.5">
+                            <input type="checkbox" name="facebook" defaultChecked className="w-4 h-4 accent-[#0f6b53]" />
+                            Facebook
+                          </label>
+                          <button className="ml-auto bg-[#0f6b53] text-white rounded-lg px-4 py-2 text-sm font-semibold hover:opacity-90">
+                            Programmer
+                          </button>
+                        </div>
+                        <p className="text-[11px] text-gray-400">
+                          L&apos;envoi reste annulable depuis le Journal jusqu&apos;à l&apos;heure choisie.
+                        </p>
+                      </form>
+                    )}
+                  </details>
 
                   <div className="flex gap-2 mt-4 pt-3 border-t border-gray-100">
                     <form action={changerStatut}>

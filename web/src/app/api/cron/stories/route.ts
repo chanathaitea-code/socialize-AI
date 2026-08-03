@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { iso, mondayOf } from "@/lib/semaine";
 import { publierLaStory } from "@/lib/publish";
 import { rafraichirMesures } from "@/lib/insights";
+import { publierMedia } from "@/lib/publier-media";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -78,15 +79,24 @@ export async function GET(req: NextRequest) {
   for (const job of jobs ?? []) {
     try {
       const legende = job.caption ?? "";
-      const resultats = await publierLaStory(supabase, {
-        brandId: job.brand_id,
-        monday: new Date(job.monday + "T00:00:00Z"),
-        theme: job.theme,
-        mediaPath: job.media_path,
-        fond: job.fond,
-        legende,
-        cibles: job.targets ?? [],
-      });
+      const resultats =
+        job.kind === "photo" && job.media_path
+          ? await publierMedia(supabase, {
+              brandId: job.brand_id,
+              mediaPath: job.media_path,
+              legende,
+              cibles: job.targets ?? [],
+              format: job.format ?? "post",
+            })
+          : await publierLaStory(supabase, {
+              brandId: job.brand_id,
+              monday: new Date(job.monday + "T00:00:00Z"),
+              theme: job.theme,
+              mediaPath: job.media_path,
+              fond: job.fond,
+              legende,
+              cibles: job.targets ?? [],
+            });
       const echecs = resultats.filter((r) => r.status === "failed");
       await supabase
         .from("story_jobs")
