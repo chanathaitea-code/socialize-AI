@@ -39,7 +39,7 @@ export async function publierLaStory(
   sunday.setUTCDate(sunday.getUTCDate() + 6);
   const { data: slots } = await supabase
     .from("location_schedule")
-    .select("day, service, time_range, note")
+    .select("day, service, time_range, note, status")
     .eq("brand_id", brandId)
     .gte("day", iso(monday))
     .lte("day", iso(sunday))

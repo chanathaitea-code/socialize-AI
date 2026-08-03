@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
 import { JOURS, clampWeek, iso, libellePeriode, mondayOf } from "@/lib/semaine";
 import Nav from "../nav";
-import { addSlot, deleteSlot, copyPreviousWeek } from "./actions";
+import { addSlot, annulerJournee, deleteSlot, copyPreviousWeek, retablirJournee } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -142,11 +142,34 @@ export default async function EmplacementsPage({
             const daySlots = byDay.get(day.date) ?? [];
             return (
               <div key={day.date} className="bg-white border border-gray-200 rounded-xl p-4">
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
                   <span className="font-bold text-sm text-[#12211c]">
                     {day.label} <span className="text-gray-400 font-normal">{day.num}</span>
+                    {daySlots.length > 0 && daySlots.every((s) => s.status === "cancelled") && (
+                      <span className="ml-2 text-[10px] font-bold uppercase rounded px-2 py-0.5 bg-red-100 text-red-700">
+                        journée annulée
+                      </span>
+                    )}
                   </span>
-                  {daySlots.length === 0 && <span className="text-xs text-gray-400">jour sans service</span>}
+                  {daySlots.length === 0 ? (
+                    <span className="text-xs text-gray-400">jour sans service</span>
+                  ) : daySlots.every((s) => s.status === "cancelled") ? (
+                    <form action={retablirJournee}>
+                      <input type="hidden" name="day" value={day.date} />
+                      <input type="hidden" name="w" value={w} />
+                      <button className="text-xs text-gray-500 hover:text-[#0f6b53] underline">
+                        finalement on y va
+                      </button>
+                    </form>
+                  ) : (
+                    <form action={annulerJournee}>
+                      <input type="hidden" name="day" value={day.date} />
+                      <input type="hidden" name="w" value={w} />
+                      <button className="text-xs text-gray-400 hover:text-red-600 underline">
+                        journée annulée
+                      </button>
+                    </form>
+                  )}
                 </div>
 
                 {daySlots.map((s) => (
@@ -154,7 +177,9 @@ export default async function EmplacementsPage({
                     <span className={`text-[10px] font-bold uppercase rounded px-2 py-0.5 ${s.service === "midi" ? "bg-amber-100 text-amber-800" : "bg-indigo-100 text-indigo-800"}`}>
                       {s.service}
                     </span>
-                    <span className="text-sm font-medium text-[#12211c]">{s.note}</span>
+                    <span className={`text-sm font-medium ${s.status === "cancelled" ? "text-gray-400 line-through" : "text-[#12211c]"}`}>
+                      {s.note}
+                    </span>
                     <span className="text-xs text-gray-500">{s.time_range}</span>
                     <form action={deleteSlot} className="ml-auto">
                       <input type="hidden" name="id" value={s.id} />

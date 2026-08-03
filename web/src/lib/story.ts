@@ -56,7 +56,7 @@ export const FONDS_EXPORT: Record<string, string> = {
 
 export const EVENEMENT = /festival|open air|événement|evenement/i;
 
-export type Slot = { day: string; service: string; time_range: string | null; note: string | null };
+export type Slot = { day: string; service: string; time_range: string | null; note: string | null; status?: string };
 export type Service = { label: string; lieu: string; horaires: string; special: boolean };
 export type Ligne = { court: string; jourLong: string; services: Service[]; vide: boolean };
 
@@ -69,7 +69,7 @@ export function lignesSemaine(slots: Slot[], monday: Date): Ligne[] {
     const d = new Date(monday);
     d.setUTCDate(d.getUTCDate() + i);
     const key = d.toISOString().slice(0, 10);
-    const jour = slots.filter((s) => s.day === key);
+    const jour = slots.filter((s) => s.day === key && s.status !== "cancelled");
     const services: Service[] = [];
     for (const nom of ["midi", "soir"] as const) {
       const s = jour.find((x) => x.service === nom);

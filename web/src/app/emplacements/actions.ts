@@ -105,3 +105,51 @@ export async function signOut() {
   await supabase.auth.signOut();
   redirect("/login");
 }
+
+/**
+ * Journée annulée : marque les services du jour comme annulés et retire les
+ * envois programmés pour cette journée. Utile un jour de pluie ou de panne.
+ */
+export async function annulerJournee(formData: FormData) {
+  const supabase = await supabaseServer();
+  const jour = String(formData.get("day") ?? "");
+  const w = clampWeek(formData.get("w"));
+  if (!jour) return;
+
+  const { data: brands } = await supabase.from("brands").select("id").limit(1);
+  const brandId = brands?.[0]?.id as string | undefined;
+  if (!brandId) redirect(retour(w, "err=Marque%20introuvable"));
+
+  const { error } = await supabase
+    .from("location_schedule")
+    .update({ status: "cancelled" })
+    .eq("brand_id", brandId)
+    .eq("day", jour);
+  if (error) redirect(retour(w, `err=${encodeURIComponent(error.message)}`));
+
+  // Les envois prévus ce jour-là n'ont plus lieu d'être
+  const debut = new Date(jour + "T00:00:00Z").toISOString();
+  const fin = new Date(jour + "T23:59:59Z").toISOString();
+  await supabase
+    .from("story_jobs")
+    .update({ status: "cancelled", done_at: new Date().toISOString() })
+    .eq("brand_id", brandId)
+    .eq("status", "scheduled")
+    .gte("run_at", debut)
+    .lte("run_at", fin);
+
+  revalidatePath("/emplacements");
+  revalidatePath("/journal");
+  redirect(retour(w, "ok=Journ%C3%A9e%20annul%C3%A9e"));
+}
+
+/** Retour en arrière : la journée est finalement assurée. */
+export async function retablirJournee(formData: FormData) {
+  const supabase = await supabaseServer();
+  const jour = String(formData.get("day") ?? "");
+  const w = clampWeek(formData.get("w"));
+  if (!jour) return;
+  await supabase.from("location_schedule").update({ status: "planned" }).eq("day", jour);
+  revalidatePath("/emplacements");
+  redirect(retour(w, "ok=Journ%C3%A9e%20r%C3%A9tablie"));
+}

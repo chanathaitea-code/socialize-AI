@@ -4,6 +4,7 @@ import { iso, mondayOf } from "@/lib/semaine";
 import { publierLaStory } from "@/lib/publish";
 import { rafraichirMesures } from "@/lib/insights";
 import { publierMedia } from "@/lib/publier-media";
+import { dechiffrer } from "@/lib/crypto";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -42,10 +43,15 @@ export async function GET(req: NextRequest) {
   const supabase = supabaseAdmin();
   const journal: string[] = [];
 
+  // Pause générale : on ne publie rien, les envois restent en attente
+  const { data: reglages0 } = await supabase.from("automation_settings").select("brand_id, mode");
+  const enPause = new Set((reglages0 ?? []).filter((r) => r.mode === "paused").map((r) => r.brand_id));
+
   // 1. Rendez-vous hebdomadaire : créer l'envoi de la semaine suivante
   const { jour, heure } = maintenantParis();
   const { data: reglages } = await supabase.from("story_auto").select("*").eq("enabled", true);
   for (const r of reglages ?? []) {
+    if (enPause.has(r.brand_id)) continue;
     if (r.weekday !== jour || r.hour_paris !== heure) continue;
     const cible = mondayOf(1); // la story annonce la semaine à venir
     if (r.last_run_week === iso(cible)) continue; // déjà programmé cette semaine
@@ -82,6 +88,10 @@ export async function GET(req: NextRequest) {
     .limit(5);
 
   for (const job of jobs ?? []) {
+    if (enPause.has(job.brand_id)) {
+      journal.push(`${job.id} : en attente, tout est en pause`);
+      continue;
+    }
     try {
       const legende = job.caption ?? "";
       const resultats =
@@ -133,6 +143,32 @@ export async function GET(req: NextRequest) {
       if (n) journal.push(`${n} statistique(s) relevée(s)`);
     } catch {
       // un relevé raté n'empêche pas le reste
+    }
+  }
+
+  // 4. Santé des comptes : un jeton révoqué doit se voir avant la prochaine publication
+  const { data: tousComptes } = await supabase
+    .from("social_accounts")
+    .select("id, platform, external_id, encrypted_credentials, status");
+  for (const c of tousComptes ?? []) {
+    try {
+      const jeton = dechiffrer(String(c.encrypted_credentials));
+      const r = await fetch(
+        `https://graph.facebook.com/v23.0/${c.external_id}?fields=id&access_token=${encodeURIComponent(jeton)}`,
+        { cache: "no-store" }
+      );
+      const ok = r.ok && !(await r.json()).error;
+      const statut = ok ? "connected" : "error";
+      if (statut !== c.status) journal.push(`${c.platform} : ${statut}`);
+      await supabase
+        .from("social_accounts")
+        .update({ status: statut, last_health_check: new Date().toISOString() })
+        .eq("id", c.id);
+    } catch {
+      await supabase
+        .from("social_accounts")
+        .update({ status: "error", last_health_check: new Date().toISOString() })
+        .eq("id", c.id);
     }
   }
 

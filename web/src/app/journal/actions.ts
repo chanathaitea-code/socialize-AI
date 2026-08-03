@@ -80,3 +80,20 @@ export async function basculerHebdo(formData: FormData) {
   revalidatePath("/journal");
   redirect(`/journal?ok=${actif ? "Publication%20automatique%20coup%C3%A9e" : "Publication%20automatique%20activ%C3%A9e"}`);
 }
+
+/** Pause globale : plus rien ne part tant qu'elle est active. */
+export async function basculerPause(formData: FormData) {
+  const supabase = await supabaseServer();
+  const enPause = String(formData.get("enPause") ?? "false") === "true";
+  const { data: brands } = await supabase.from("brands").select("id").limit(1);
+  const brandId = brands?.[0]?.id as string | undefined;
+  if (!brandId) redirect("/journal?err=Marque%20introuvable");
+
+  const { error } = await supabase
+    .from("automation_settings")
+    .upsert({ brand_id: brandId, mode: enPause ? "semi_auto" : "paused" }, { onConflict: "brand_id" });
+  if (error) redirect(`/journal?err=${encodeURIComponent(error.message)}`);
+  revalidatePath("/journal");
+  revalidatePath("/emplacements");
+  redirect(`/journal?ok=${enPause ? "Publications%20r%C3%A9activ%C3%A9es" : "Tout%20est%20en%20pause"}`);
+}

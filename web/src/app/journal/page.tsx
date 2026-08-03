@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
 import Nav from "../nav";
-import { annulerEnvoi, basculerHebdo, supprimerPublication } from "./actions";
+import { annulerEnvoi, basculerHebdo, basculerPause, supprimerPublication } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -72,6 +72,9 @@ export default async function JournalPage({
   const { data: autoData } = await supabase.from("story_auto").select("enabled").limit(1);
   const hebdoActif = autoData?.[0]?.enabled ?? false;
 
+  const { data: reglages } = await supabase.from("automation_settings").select("mode").limit(1);
+  const enPause = reglages?.[0]?.mode === "paused";
+
   return (
     <main className="min-h-screen bg-[#f4f4f1]">
       <Nav actif="/journal" />
@@ -85,6 +88,32 @@ export default async function JournalPage({
 
         {err && <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">Problème : {err}</div>}
         {ok && <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">✓ {ok}</div>}
+
+        <form
+          action={basculerPause}
+          className={`mt-6 rounded-xl border p-5 flex items-center gap-4 flex-wrap ${
+            enPause ? "border-amber-300 bg-amber-50" : "border-gray-200 bg-white"
+          }`}
+        >
+          <input type="hidden" name="enPause" value={String(enPause)} />
+          <div className="flex-1 min-w-[240px]">
+            <div className="font-bold text-[#12211c]">Pause générale</div>
+            <div className="text-sm text-gray-500">
+              Le coupe-circuit : rien ne part, ni les envois programmés, ni la story du dimanche. Les envois restent en
+              attente et repartiront quand vous relancerez.
+            </div>
+          </div>
+          <span
+            className={`text-[11px] font-bold uppercase rounded-full px-3 py-1 ${
+              enPause ? "bg-amber-200 text-amber-900" : "bg-gray-100 text-gray-500"
+            }`}
+          >
+            {enPause ? "en pause" : "actif"}
+          </span>
+          <button className="text-sm border border-gray-300 rounded-lg px-4 py-2 font-semibold hover:border-[#0f6b53] hover:text-[#0f6b53]">
+            {enPause ? "Tout relancer" : "Tout mettre en pause"}
+          </button>
+        </form>
 
         <form
           action={basculerHebdo}
