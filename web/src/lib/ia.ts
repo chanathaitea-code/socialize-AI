@@ -45,7 +45,7 @@ export async function redigerJson<T>(consigne: string, demande: string): Promise
     );
   }
 
-  let derniere = "";
+  const erreurs: string[] = [];
   for (const f of dispos) {
     for (const modele of f.modeles) {
       try {
@@ -65,21 +65,21 @@ export async function redigerJson<T>(consigne: string, demande: string): Promise
         });
         const j = await r.json();
         if (!r.ok || j.error) {
-          derniere = `${f.nom} · ${j?.error?.message ?? `réponse ${r.status}`}`;
+          erreurs.push(`${f.nom}/${modele} : ${j?.error?.message ?? `réponse ${r.status}`}`);
           continue;
         }
         const texte: string = j.choices?.[0]?.message?.content ?? "";
         const debut = texte.indexOf("{");
         const fin = texte.lastIndexOf("}");
         if (debut < 0 || fin < 0) {
-          derniere = `${f.nom} · réponse illisible du modèle`;
+          erreurs.push(`${f.nom}/${modele} : réponse illisible`);
           continue;
         }
         return JSON.parse(texte.slice(debut, fin + 1)) as T;
       } catch (e) {
-        derniere = `${f.nom} · ${e instanceof Error ? e.message : "appel impossible"}`;
+        erreurs.push(`${f.nom}/${modele} : ${e instanceof Error ? e.message : "appel impossible"}`);
       }
     }
   }
-  throw new Error(derniere || "aucun modèle disponible");
+  throw new Error(erreurs.join(" | ") || "aucun modèle disponible");
 }
