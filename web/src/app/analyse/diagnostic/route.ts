@@ -46,20 +46,38 @@ export async function GET(req: NextRequest) {
     }
   };
 
-  for (const v of ["v21.0", "v23.0"]) {
-    if (dernierPost) {
-      await essayer(`${v} post impressions`, `${GRAPH}/${v}/${dernierPost}/insights?metric=post_impressions`);
-      await essayer(`${v} post reactions`, `${GRAPH}/${v}/${dernierPost}/insights?metric=post_reactions_by_type_total`);
-      await essayer(`${v} post champs publics`, `${GRAPH}/${v}/${dernierPost}?fields=likes.summary(true),comments.summary(true),shares`);
+  const v = "v23.0";
+  const METRIQUES_POST = [
+    "post_impressions_unique",
+    "post_impressions_organic",
+    "post_clicks",
+    "post_reactions_by_type_total",
+    "post_activity",
+    "post_engaged_users",
+    "post_video_views",
+    "post_views",
+  ];
+  const METRIQUES_PAGE = [
+    "page_impressions_unique",
+    "page_post_engagements",
+    "page_fans",
+    "page_views_total",
+    "page_daily_follows_unique",
+    "page_total_actions",
+  ];
+
+  if (dernierPost) {
+    for (const m of METRIQUES_POST) {
+      await essayer(`post ${m}`, `${GRAPH}/${v}/${dernierPost}/insights?metric=${m}`);
     }
-    await essayer(`${v} page impressions`, `${GRAPH}/${v}/${fb.external_id}/insights?metric=page_impressions&period=day`);
-    if (derniereStory) {
-      await essayer(`${v} story insights`, `${GRAPH}/${v}/${derniereStory}/insights?metric=reach`);
-      await essayer(`${v} story champs`, `${GRAPH}/${v}/${derniereStory}?fields=id,media_type,timestamp`);
-    }
-    if (ig?.external_id) {
-      await essayer(`${v} stories du compte`, `${GRAPH}/${v}/${ig.external_id}/stories?fields=id,timestamp`);
-    }
+    await essayer("post champs simples", `${GRAPH}/${v}/${dernierPost}?fields=id,created_time`);
+  }
+  for (const m of METRIQUES_PAGE) {
+    await essayer(`page ${m}`, `${GRAPH}/${v}/${fb.external_id}/insights?metric=${m}&period=day`);
+  }
+  if (ig?.external_id) {
+    await essayer("media du compte", `${GRAPH}/${v}/${ig.external_id}/media?fields=id,media_type,timestamp&limit=3`);
+    await essayer("stories du compte", `${GRAPH}/${v}/${ig.external_id}/stories?fields=id,timestamp`);
   }
 
   return NextResponse.json({ post: dernierPost, story: derniereStory, essais }, { status: 200 });
