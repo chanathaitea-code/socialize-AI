@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
 import Nav from "../nav";
+import { dechiffrer } from "@/lib/crypto";
 import { deconnecter } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -39,10 +40,43 @@ export default async function ReseauxPage({
 
   const { data } = await supabase
     .from("social_accounts")
-    .select("id, platform, handle, display_name, status, token_expires_at, connected_at")
+    .select("id, platform, handle, display_name, status, token_expires_at, connected_at, encrypted_credentials")
     .order("platform");
-  const comptes = (data ?? []) as Compte[];
+  const comptes = (data ?? []) as (Compte & { encrypted_credentials?: string })[];
   const parPlateforme = new Map(comptes.map((c) => [c.platform, c]));
+
+  // Autorisations réellement accordées : c'est ce qui explique la plupart des
+  // refus de l'API, et personne ne peut le deviner sans le demander à Meta.
+  let accordees: string[] = [];
+  let refusees: string[] = [];
+  let erreurPermissions: string | null = null;
+  const compteFb = parPlateforme.get("facebook");
+  if (compteFb?.encrypted_credentials) {
+    try {
+      const jeton = dechiffrer(String(compteFb.encrypted_credentials));
+      const r = await fetch(
+        `https://graph.facebook.com/v21.0/me/permissions?access_token=${encodeURIComponent(jeton)}`,
+        { cache: "no-store" }
+      );
+      const j = await r.json();
+      if (j.error) throw new Error(j.error.message);
+      for (const p of j.data ?? []) {
+        (p.status === "granted" ? accordees : refusees).push(p.permission);
+      }
+    } catch (e) {
+      erreurPermissions = e instanceof Error ? e.message : "vérification impossible";
+    }
+  }
+  const ATTENDUES = [
+    "pages_show_list",
+    "pages_read_engagement",
+    "pages_manage_posts",
+    "instagram_basic",
+    "instagram_content_publish",
+    "instagram_manage_insights",
+    "read_insights",
+  ];
+  const manquantes = compteFb ? ATTENDUES.filter((p) => !accordees.includes(p)) : [];
 
   return (
     <main className="min-h-screen bg-[#f4f4f1]">
@@ -108,7 +142,37 @@ export default async function ReseauxPage({
           {comptes.length ? "Reconnecter mes comptes Meta" : "Connecter Instagram et Facebook"}
         </a>
 
-        <div className="mt-8 rounded-xl border border-gray-200 bg-white p-5 text-sm text-gray-600 space-y-2">
+        {compteFb && (
+          <div
+            className={`mt-6 rounded-xl border p-5 ${
+              manquantes.length ? "border-amber-200 bg-amber-50" : "border-[#c8e2da] bg-[#f7fbf9]"
+            }`}
+          >
+            <div className="font-bold text-[#12211c] text-sm">Autorisations accordées</div>
+            {erreurPermissions ? (
+              <p className="text-sm text-red-700 mt-1">Vérification impossible : {erreurPermissions}</p>
+            ) : manquantes.length ? (
+              <>
+                <p className="text-sm text-amber-800 mt-1">
+                  Il manque {manquantes.length} autorisation{manquantes.length > 1 ? "s" : ""} :{" "}
+                  <span className="font-mono text-[12px]">{manquantes.join(", ")}</span>.
+                </p>
+                <p className="text-sm text-gray-600 mt-1">
+                  Reconnectez les comptes ci-dessus et acceptez tout l&apos;écran Facebook.
+                </p>
+              </>
+            ) : (
+              <p className="text-sm text-[#0f6b53] mt-1">
+                Tout est en ordre, les {accordees.length} autorisations nécessaires sont accordées.
+              </p>
+            )}
+            {refusees.length > 0 && (
+              <p className="text-[11px] text-gray-500 mt-2">Refusées : {refusees.join(", ")}</p>
+            )}
+          </div>
+        )}
+
+        <div className="mt-6 rounded-xl border border-gray-200 bg-white p-5 text-sm text-gray-600 space-y-2">
           <div className="font-bold text-[#12211c]">Ce que l&apos;application pourra faire</div>
           <p>
             Publier les contenus que vous aurez validés sur votre Page et votre compte Instagram professionnel, et lire

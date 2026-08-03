@@ -60,6 +60,7 @@ export async function GET(req: NextRequest) {
       display_name: string;
       encrypted_credentials: string;
       token_expires_at: string | null;
+      connected_at: string;
       details: Record<string, unknown>;
     };
 
@@ -74,6 +75,7 @@ export async function GET(req: NextRequest) {
         display_name: page.name,
         encrypted_credentials: chiffrer(page.access_token),
         token_expires_at: expire,
+        connected_at: new Date().toISOString(),
         details: { pages: pages.map((p) => ({ id: p.id, name: p.name })) },
       },
     ];
@@ -90,6 +92,7 @@ export async function GET(req: NextRequest) {
         // La publication Instagram passe par le jeton de la Page rattachée
         encrypted_credentials: chiffrer(page.access_token),
         token_expires_at: expire,
+        connected_at: new Date().toISOString(),
         details: { page_id: page.id, page_name: page.name },
       });
     }
