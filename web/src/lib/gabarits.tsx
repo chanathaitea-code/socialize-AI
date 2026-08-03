@@ -135,6 +135,18 @@ function platElement(theme: Theme, c: ChampsGabarit) {
           // eslint-disable-next-line @next/next/no-img-element
           <img src={c.photoUrl} alt="" width={L} height={1080} style={{ objectFit: "cover" }} />
         )}
+        {/* Un voile sombre en haut, sinon le nom de la marque disparaît sur une photo claire */}
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            display: "flex",
+            width: L,
+            height: 240,
+            background: "linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0) 100%)",
+          }}
+        />
         <div style={{ position: "absolute", top: 0, left: 0, display: "flex", width: L }}>{entete(theme, "À LA CARTE")}</div>
       </div>
 
