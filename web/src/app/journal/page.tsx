@@ -173,8 +173,8 @@ export default async function JournalPage({
           <div className="font-bold text-[#12211c]">Pilote automatique</div>
           <p className="text-sm text-gray-500 mt-1">
             Ce que l&apos;application fait sans rien vous demander. Chaque règle prépare un envoi et le laisse en
-            attente : vous avez {String(reglagesAuto.auto_grace ?? 30)} minutes pour le couper ici avant qu&apos;il ne
-            parte.
+            attente : vous avez {String(reglagesAuto.auto_grace ?? 30)}
+            {" minutes pour le couper ici avant qu\u2019il ne parte."}
           </p>
 
           <div className="grid gap-2 mt-4">
