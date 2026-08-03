@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
+import Nav from "../nav";
 import { saveBrand, addProduct, deleteProduct, toggleStock, prefillCarte } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -43,16 +43,7 @@ export default async function MarquePage({
 
   return (
     <main className="min-h-screen bg-[#f4f4f1]">
-      <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center gap-4 flex-wrap">
-        <h1 className="font-extrabold text-[#12211c]">
-          Social<span className="text-[#0f6b53]">Flow</span> AI
-        </h1>
-        <nav className="flex gap-3 text-sm">
-          <Link href="/emplacements" className="text-gray-500 hover:text-[#0f6b53]">Emplacements</Link>
-          <Link href="/semaine" className="text-gray-500 hover:text-[#0f6b53]">Story de la semaine</Link>
-          <span className="font-semibold text-[#0f6b53]">Ma marque</span>
-        </nav>
-      </header>
+      <Nav actif="/marque" />
 
       <div className="max-w-5xl mx-auto px-4 py-8">
         <h2 className="text-xl font-bold text-[#12211c]">Profil de marque</h2>

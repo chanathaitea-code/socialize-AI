@@ -1,22 +1,11 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
-import { addSlot, deleteSlot, signOut } from "./actions";
+import { JOURS, clampWeek, iso, libellePeriode, mondayOf } from "@/lib/semaine";
+import Nav from "../nav";
+import { addSlot, deleteSlot, copyPreviousWeek } from "./actions";
 
 export const dynamic = "force-dynamic";
-
-const JOURS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
-
-function mondayOfCurrentWeek(): Date {
-  const now = new Date();
-  const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-  const dow = (d.getUTCDay() + 6) % 7; // 0 = lundi
-  d.setUTCDate(d.getUTCDate() - dow);
-  return d;
-}
-
-function iso(d: Date): string {
-  return d.toISOString().slice(0, 10);
-}
 
 type Slot = {
   id: string;
@@ -30,9 +19,10 @@ type Slot = {
 export default async function EmplacementsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ err?: string }>;
+  searchParams: Promise<{ err?: string; ok?: string; w?: string }>;
 }) {
-  const { err } = await searchParams;
+  const { err, ok, w: wRaw } = await searchParams;
+  const w = clampWeek(wRaw);
   const supabase = await supabaseServer();
   const {
     data: { user },
@@ -42,7 +32,7 @@ export default async function EmplacementsPage({
   // Première connexion : crée organisation + marque + réglages
   await supabase.rpc("bootstrap_account", { p_name: "Chana Thaï" });
 
-  const monday = mondayOfCurrentWeek();
+  const monday = mondayOf(w);
   const sunday = new Date(monday);
   sunday.setUTCDate(sunday.getUTCDate() + 6);
 
@@ -53,6 +43,16 @@ export default async function EmplacementsPage({
     .lte("day", iso(sunday))
     .order("day")
     .order("service");
+
+  // Semaine précédente : sert au bouton « reprendre la semaine précédente »
+  const lundiPrec = mondayOf(w - 1);
+  const dimanchePrec = new Date(lundiPrec);
+  dimanchePrec.setUTCDate(dimanchePrec.getUTCDate() + 6);
+  const { count: nbPrec } = await supabase
+    .from("location_schedule")
+    .select("id", { count: "exact", head: true })
+    .gte("day", iso(lundiPrec))
+    .lte("day", iso(dimanchePrec));
 
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(monday);
@@ -67,25 +67,45 @@ export default async function EmplacementsPage({
     byDay.set(s.day, list);
   });
 
+  const vide = (slots ?? []).length === 0;
+  const lienSemaine = (n: number) => (n === 0 ? "/emplacements" : `/emplacements?w=${n}`);
+  const intitule =
+    w === 0 ? "Cette semaine" : w === 1 ? "Semaine prochaine" : w === -1 ? "Semaine dernière" : null;
+
   return (
     <main className="min-h-screen bg-[#f4f4f1]">
-      <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center gap-4">
-        <h1 className="font-extrabold text-[#12211c]">
-          Social<span className="text-[#0f6b53]">Flow</span> AI
-        </h1>
-        <nav className="flex gap-3 text-sm">
-          <span className="font-semibold text-[#0f6b53]">Emplacements</span>
-          <a href="/semaine" className="text-gray-500 hover:text-[#0f6b53]">Story de la semaine</a>
-        </nav>
-        <form action={signOut} className="ml-auto">
-          <button className="text-sm text-gray-500 hover:text-red-600">Déconnexion</button>
-        </form>
-      </header>
+      <Nav actif="/emplacements" />
 
       <div className="max-w-5xl mx-auto px-4 py-8">
-        <div className="mb-6">
-          <h2 className="text-xl font-bold text-[#12211c]">Semaine du {days[0].num} au {days[6].num}</h2>
-          <p className="text-sm text-gray-500 mt-1">
+        <div className="mb-5">
+          <div className="flex items-center gap-3 flex-wrap">
+            <Link
+              href={lienSemaine(w - 1)}
+              aria-label="Semaine précédente"
+              className="w-8 h-8 rounded-lg border border-gray-300 bg-white text-gray-600 flex items-center justify-center hover:border-[#0f6b53] hover:text-[#0f6b53]"
+            >
+              ‹
+            </Link>
+            <h2 className="text-xl font-bold text-[#12211c]">Semaine {libellePeriode(monday)}</h2>
+            <Link
+              href={lienSemaine(w + 1)}
+              aria-label="Semaine suivante"
+              className="w-8 h-8 rounded-lg border border-gray-300 bg-white text-gray-600 flex items-center justify-center hover:border-[#0f6b53] hover:text-[#0f6b53]"
+            >
+              ›
+            </Link>
+            {intitule && (
+              <span className="text-[11px] font-bold uppercase tracking-wide rounded-full px-2.5 py-1 bg-[#e5f2ee] text-[#0f6b53]">
+                {intitule}
+              </span>
+            )}
+            {w !== 0 && (
+              <Link href="/emplacements" className="text-sm text-gray-500 hover:text-[#0f6b53] underline">
+                revenir à cette semaine
+              </Link>
+            )}
+          </div>
+          <p className="text-sm text-gray-500 mt-2">
             Chaque emplacement enregistré ici pilotera les Stories « on est là », la fiche Google et les réponses « vous êtes où ? ».
           </p>
         </div>
@@ -94,6 +114,27 @@ export default async function EmplacementsPage({
           <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
             Problème : {err}
           </div>
+        )}
+        {ok && (
+          <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+            ✓ {ok}
+          </div>
+        )}
+
+        {vide && (nbPrec ?? 0) > 0 && (
+          <form
+            action={copyPreviousWeek}
+            className="mb-5 rounded-xl border border-[#c8e2da] bg-[#f7fbf9] px-4 py-3 flex items-center gap-3 flex-wrap"
+          >
+            <input type="hidden" name="w" value={w} />
+            <div className="text-sm text-[#12211c] flex-1 min-w-[220px]">
+              Cette semaine est vide, alors que la précédente compte {nbPrec} service{(nbPrec ?? 0) > 1 ? "s" : ""}.
+              <span className="text-gray-500"> Vos emplacements sont récurrents ? Reprenez-les d&apos;un clic, vous ajusterez ensuite.</span>
+            </div>
+            <button className="text-sm bg-[#0f6b53] text-white rounded-lg px-4 py-2 font-semibold hover:opacity-90">
+              ⟳ Reprendre la semaine précédente
+            </button>
+          </form>
         )}
 
         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-1">
@@ -117,6 +158,7 @@ export default async function EmplacementsPage({
                     <span className="text-xs text-gray-500">{s.time_range}</span>
                     <form action={deleteSlot} className="ml-auto">
                       <input type="hidden" name="id" value={s.id} />
+                      <input type="hidden" name="w" value={w} />
                       <button className="text-xs text-gray-400 hover:text-red-600">Supprimer</button>
                     </form>
                   </div>
@@ -124,6 +166,7 @@ export default async function EmplacementsPage({
 
                 <form action={addSlot} className="flex flex-wrap items-center gap-2 pt-3 border-t border-gray-100 mt-2">
                   <input type="hidden" name="day" value={day.date} />
+                  <input type="hidden" name="w" value={w} />
                   <select name="service" className="text-xs border border-gray-300 rounded-lg px-2 py-1.5 bg-white">
                     <option value="midi">Midi</option>
                     <option value="soir">Soir</option>
@@ -148,7 +191,8 @@ export default async function EmplacementsPage({
         </div>
 
         <p className="text-xs text-gray-400 mt-6">
-          Données enregistrées en temps réel dans votre base sécurisée (Supabase, Paris). Phase 1, lot 1.
+          Données enregistrées en temps réel dans votre base sécurisée (Supabase, Paris). Les emplacements restent
+          consultables semaine par semaine, rien n&apos;est effacé au changement de semaine.
         </p>
       </div>
     </main>
