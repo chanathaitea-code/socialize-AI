@@ -17,6 +17,9 @@ const TITRES: Record<string, string> = {
   "/rapport": "Rapport",
   "/marque": "Ma marque",
   "/reseaux": "Mes réseaux",
+  "/opportunites": "Opportunités",
+  "/territoire": "Territoire",
+  "/modules": "Modules et droits",
 };
 
 export default async function Nav({ actif }: { actif: string }) {
