@@ -27,42 +27,67 @@ function somme(data: { name: string; values?: { value?: number }[] }[], nom: str
   return typeof v === "number" ? v : undefined;
 }
 
-/** Statistiques d'une story Instagram (valables tant que la story est en ligne). */
-export async function mesuresStoryInstagram(mediaId: string, jeton: string): Promise<Mesures> {
-  // Meta a renommé « impressions » en « views » selon les versions : on tente
-  // le jeu récent, puis l'ancien, plutôt que d'échouer sur un nom de métrique.
-  for (const metriques of ["views,reach,replies", "impressions,reach,replies"]) {
+/**
+ * Meta renomme et retire des métriques d'une version à l'autre. Plutôt que de
+ * tout perdre sur un nom invalide, on essaie plusieurs jeux, puis chaque
+ * métrique séparément, et on garde ce qui répond.
+ */
+async function essayerMetriques(
+  base: string,
+  jeton: string,
+  jeux: string[][]
+): Promise<{ data: { name: string; values?: { value?: number }[] }[]; erreur?: string }> {
+  let derniere = "";
+  for (const jeu of jeux) {
     try {
       const j = await json(
-        `${GRAPH}/${mediaId}/insights?metric=${metriques}&access_token=${encodeURIComponent(jeton)}`
+        `${GRAPH}/${base}/insights?metric=${jeu.join(",")}&access_token=${encodeURIComponent(jeton)}`
       );
-      const d = j.data ?? [];
-      return {
-        vues: somme(d, "views") ?? somme(d, "impressions"),
-        portee: somme(d, "reach"),
-        reponses: somme(d, "replies"),
-      };
-    } catch {
-      // on essaie le jeu de métriques suivant
+      if (j.data?.length) return { data: j.data };
+    } catch (e) {
+      derniere = e instanceof Error ? e.message : "appel refusé";
     }
   }
-  return { indisponible: "statistiques Instagram indisponibles (story expirée ou autorisation manquante)" };
+  // dernier recours : une métrique à la fois
+  const toutes = [...new Set(jeux.flat())];
+  const data: { name: string; values?: { value?: number }[] }[] = [];
+  for (const m of toutes) {
+    try {
+      const j = await json(`${GRAPH}/${base}/insights?metric=${m}&access_token=${encodeURIComponent(jeton)}`);
+      if (j.data?.length) data.push(...j.data);
+    } catch (e) {
+      derniere = e instanceof Error ? e.message : derniere;
+    }
+  }
+  return { data, erreur: data.length ? undefined : derniere };
+}
+
+/** Statistiques d'une story Instagram (valables tant que la story est en ligne). */
+export async function mesuresStoryInstagram(mediaId: string, jeton: string): Promise<Mesures> {
+  const { data, erreur } = await essayerMetriques(mediaId, jeton, [
+    ["views", "reach", "replies"],
+    ["impressions", "reach", "replies"],
+  ]);
+  if (erreur) return { indisponible: erreur };
+  return {
+    vues: somme(data, "views") ?? somme(data, "impressions"),
+    portee: somme(data, "reach"),
+    reponses: somme(data, "replies"),
+  };
 }
 
 /** Statistiques d'une publication de Page Facebook. */
 export async function mesuresPublicationFacebook(postId: string, jeton: string): Promise<Mesures> {
   const mesures: Mesures = {};
-  try {
-    const j = await json(
-      `${GRAPH}/${postId}/insights?metric=post_impressions,post_impressions_unique,post_engaged_users&access_token=${encodeURIComponent(jeton)}`
-    );
-    const d = j.data ?? [];
-    mesures.vues = somme(d, "post_impressions");
-    mesures.portee = somme(d, "post_impressions_unique");
-    mesures.interactions = somme(d, "post_engaged_users");
-  } catch (e) {
-    mesures.indisponible = e instanceof Error ? e.message : "statistiques indisponibles";
-  }
+  const { data, erreur } = await essayerMetriques(postId, jeton, [
+    ["post_impressions", "post_impressions_unique", "post_engaged_users"],
+    ["post_impressions", "post_impressions_unique"],
+    ["post_views", "post_reach"],
+  ]);
+  if (erreur) mesures.indisponible = erreur;
+  mesures.vues = somme(data, "post_impressions") ?? somme(data, "post_views");
+  mesures.portee = somme(data, "post_impressions_unique") ?? somme(data, "post_reach");
+  mesures.interactions = somme(data, "post_engaged_users");
   try {
     const j = await json(
       `${GRAPH}/${postId}?fields=likes.summary(true),comments.summary(true),shares&access_token=${encodeURIComponent(jeton)}`
