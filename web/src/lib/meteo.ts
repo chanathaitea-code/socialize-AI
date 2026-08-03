@@ -54,7 +54,10 @@ function variantes(nom: string): string[] {
   for (const n of [3, 2, 1]) {
     if (mots.length > n) essais.push(mots.slice(-n).join(" "));
   }
-  return [...new Set(essais.filter((e) => e.length > 2))].map((e) => `${e}, France`);
+  // L'annuaire cherche un nom de lieu, pas une adresse : pas de « , France »,
+  // et les communes composées s'y trouvent avec des traits d'union.
+  const avecTirets = essais.map((e) => e.replace(/\s+/g, "-"));
+  return [...new Set([...essais, ...avecTirets].filter((e) => e.length > 2))];
 }
 
 async function coordonnees(
@@ -76,11 +79,11 @@ async function coordonnees(
   let p: { latitude: number; longitude: number } | undefined;
   for (const essai of variantes(nom)) {
     const r = await fetch(
-      `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(essai)}&count=1&language=fr&format=json`,
+      `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(essai)}&count=5&language=fr&format=json`,
       { cache: "no-store" }
     );
     const j = await r.json();
-    p = j?.results?.[0];
+    p = (j?.results ?? []).find((x: { country_code?: string }) => x.country_code === "FR") ?? j?.results?.[0];
     if (p) break;
   }
   if (!p) return null;
