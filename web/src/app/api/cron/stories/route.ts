@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { iso, mondayOf } from "@/lib/semaine";
 import { publierLaStory } from "@/lib/publish";
+import { rafraichirMesures } from "@/lib/insights";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -106,6 +107,17 @@ export async function GET(req: NextRequest) {
         })
         .eq("id", job.id);
       journal.push(`${job.id} : erreur`);
+    }
+  }
+
+  // 3. Statistiques des publications récentes
+  const { data: marques } = await supabase.from("brands").select("id").limit(20);
+  for (const m of marques ?? []) {
+    try {
+      const n = await rafraichirMesures(supabase, m.id, 3);
+      if (n) journal.push(`${n} statistique(s) relevée(s)`);
+    } catch {
+      // un relevé raté n'empêche pas le reste
     }
   }
 

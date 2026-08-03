@@ -7,6 +7,7 @@ const LIENS = [
   { href: "/marque", label: "Ma marque" },
   { href: "/reseaux", label: "Mes réseaux" },
   { href: "/journal", label: "Journal" },
+  { href: "/analyse", label: "Analyse" },
 ];
 
 export default function Nav({ actif }: { actif: string }) {
