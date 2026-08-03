@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
+import { chargerThemes } from "@/lib/design";
 import Nav from "../nav";
 import PhotoUploader from "./photo-uploader";
 import { deletePhoto, publierStory } from "./actions";
@@ -13,12 +14,6 @@ const JOURS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dim
 const COURT = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 const MOIS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
 
-const THEMES: Record<string, { bg: string; accent: string; photo: string; nom: string }> = {
-  vert: { nom: "Vert Bangkok", bg: "linear-gradient(175deg,#0a3129,#0d4a3a 45%,#0a2e26)", accent: "#f3c04b", photo: "linear-gradient(160deg,#d9a13b,#c8501f 70%)" },
-  nuit: { nom: "Nuit dorée", bg: "linear-gradient(175deg,#0e1520,#1d2c42 50%,#0b111b)", accent: "#e2b25a", photo: "linear-gradient(160deg,#c8a24a,#7a5716 80%)" },
-  rose: { nom: "Rose bubble tea", bg: "linear-gradient(175deg,#2a1233,#6e2954 55%,#22101f)", accent: "#ff9ec4", photo: "linear-gradient(160deg,#e0527f,#7b2d5e 80%)" },
-  piment: { nom: "Piment doux", bg: "linear-gradient(175deg,#4a1206,#8a2f10 55%,#3a0e05)", accent: "#ffcf7a", photo: "linear-gradient(160deg,#f3b13c,#c8501f 75%)" },
-};
 const PHOTOS: Record<string, string> = { padthai: "🍜", crousty: "🍗", bubble: "🧋", cheffe: "👩‍🍳", camion: "🚚", poke: "🥡" };
 
 // Fonds « générés » : compositions graphiques prêtes à l'emploi (sans photo)
@@ -45,7 +40,6 @@ export default async function SemainePage({
   searchParams: Promise<{ theme?: string; photo?: string; s?: string; media?: string; fond?: string; err?: string }>;
 }) {
   const sp = await searchParams;
-  const theme = THEMES[sp.theme ?? "vert"] ?? THEMES.vert;
   const photoKey = sp.photo && PHOTOS[sp.photo] ? sp.photo : "padthai";
   const fond = sp.fond && FONDS[sp.fond] ? sp.fond : null;
   const offset = sp.s === "next" ? 1 : 0;
@@ -55,6 +49,10 @@ export default async function SemainePage({
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
+
+  // Les couleurs livrées, plus celles que la marque s'est fait écrire dans Design
+  const THEMES = await chargerThemes(supabase);
+  const theme = THEMES[sp.theme ?? "vert"] ?? THEMES.vert;
 
   const monday = mondayOf(offset);
   const sunday = new Date(monday);

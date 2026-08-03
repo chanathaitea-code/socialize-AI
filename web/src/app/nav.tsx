@@ -8,6 +8,7 @@ const LIENS = [
   { href: "/emplacements", label: "Emplacements" },
   { href: "/stories", label: "Stories" },
   { href: "/semaine", label: "Semaine" },
+  { href: "/design", label: "Design" },
   { href: "/studio", label: "Studio" },
   { href: "/journal", label: "Journal" },
   { href: "/analyse", label: "Analyse" },

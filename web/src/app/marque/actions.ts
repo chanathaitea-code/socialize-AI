@@ -14,7 +14,11 @@ export async function saveBrand(formData: FormData) {
   const { supabase, id } = await brandId();
   if (!id) redirect("/marque?err=Marque%20introuvable");
 
+  // Le brief porte aussi des champs écrits sur d'autres écrans, le design par
+  // exemple : les conserver, sinon enregistrer le profil les effacerait.
+  const { data: actuel } = await supabase.from("brands").select("brand_brief").eq("id", id).maybeSingle();
   const brief = {
+    ...((actuel?.brand_brief ?? {}) as Record<string, string>),
     activite: String(formData.get("activite") ?? "").trim(),
     positionnement: String(formData.get("positionnement") ?? "").trim(),
     cible: String(formData.get("cible") ?? "").trim(),

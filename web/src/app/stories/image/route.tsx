@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { ImageResponse } from "next/og";
 import type { NextRequest } from "next/server";
 import { supabaseServer } from "@/lib/supabase/server";
-import { THEMES } from "@/lib/story";
+import { chargerThemes } from "@/lib/design";
 import { STORY_H, STORY_L } from "@/lib/story-image";
 import { gabaritElement, type Gabarit } from "@/lib/gabarits";
 
@@ -26,7 +26,6 @@ export async function GET(req: NextRequest) {
   try {
     const sp = req.nextUrl.searchParams;
     const gabarit = (sp.get("g") ?? "plat") as Gabarit;
-    const theme = THEMES[sp.get("theme") ?? "vert"] ?? THEMES.vert;
     const media = sp.get("media");
 
     const supabase = await supabaseServer();
@@ -34,6 +33,9 @@ export async function GET(req: NextRequest) {
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) return new Response("Connexion requise", { status: 401 });
+
+    const tous = await chargerThemes(supabase);
+    const theme = tous[sp.get("theme") ?? "vert"] ?? tous.vert;
 
     const photoUrl = media ? supabase.storage.from("media").getPublicUrl(media).data.publicUrl : null;
     const champs = {

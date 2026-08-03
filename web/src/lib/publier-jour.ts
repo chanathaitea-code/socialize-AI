@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { dechiffrer } from "./crypto";
 import { JOURS, MOIS, iso } from "./semaine";
-import { THEMES } from "./story";
+import { unTheme } from "./design";
 import { jourImageElement } from "./jour-image";
 import { rendreElement } from "./story-render";
 import { publierPhotoFacebook, publierStoryInstagram } from "./meta";
@@ -35,7 +35,7 @@ export async function publierLaJournee(
   const indice = (jour.getUTCDay() + 6) % 7;
   const image = await rendreElement(
     jourImageElement({
-      theme: THEMES[theme] ?? THEMES.vert,
+      theme: await unTheme(supabase, brandId, theme),
       jourLong: JOURS[indice],
       dateCourte: `${jour.getUTCDate()} ${MOIS[jour.getUTCMonth()]}`,
       services,

@@ -1,7 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { dechiffrer } from "./crypto";
 import { iso, libellePeriode } from "./semaine";
-import { THEMES, legendeJours, lignesSemaine, type Slot } from "./story";
+import { legendeJours, lignesSemaine, type Slot } from "./story";
+import { unTheme } from "./design";
 import { rendreStory } from "./story-render";
 import { publierPhotoFacebook, publierStoryInstagram } from "./meta";
 
@@ -58,7 +59,7 @@ export async function publierLaStory(
 
   const photoUrl = mediaPath ? supabase.storage.from("media").getPublicUrl(mediaPath).data.publicUrl : null;
   const image = await rendreStory({
-    theme: THEMES[theme] ?? THEMES.vert,
+    theme: await unTheme(supabase, brandId, theme),
     lignes,
     periode,
     photoUrl,

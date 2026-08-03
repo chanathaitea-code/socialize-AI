@@ -4,7 +4,8 @@ import { ImageResponse } from "next/og";
 import type { NextRequest } from "next/server";
 import { supabaseServer } from "@/lib/supabase/server";
 import { clampWeek, iso, libellePeriode, mondayOf } from "@/lib/semaine";
-import { THEMES, lignesSemaine, type Slot } from "@/lib/story";
+import { lignesSemaine, type Slot } from "@/lib/story";
+import { chargerThemes } from "@/lib/design";
 import { STORY_H, STORY_L, storyImageElement } from "@/lib/story-image";
 
 export const runtime = "nodejs";
@@ -30,7 +31,6 @@ async function police(nom: string, req: NextRequest): Promise<ArrayBuffer> {
 export async function GET(req: NextRequest) {
   try {
     const sp = req.nextUrl.searchParams;
-    const theme = THEMES[sp.get("theme") ?? "vert"] ?? THEMES.vert;
     const fond = sp.get("fond");
     const media = sp.get("media");
     const w = clampWeek(sp.get("w") ?? (sp.get("s") === "next" ? "1" : "0"));
@@ -40,6 +40,9 @@ export async function GET(req: NextRequest) {
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) return new Response("Connexion requise", { status: 401 });
+
+    const tous = await chargerThemes(supabase);
+    const theme = tous[sp.get("theme") ?? "vert"] ?? tous.vert;
 
     const monday = mondayOf(w);
     const sunday = new Date(monday);

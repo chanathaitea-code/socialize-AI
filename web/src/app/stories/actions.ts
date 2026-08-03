@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
 import { depuisSaisieParis, iso, mondayOf } from "@/lib/semaine";
-import { THEMES } from "@/lib/story";
+import { unTheme } from "@/lib/design";
 import { rendreElement } from "@/lib/story-render";
 import { gabaritElement, legendeGabarit, type Gabarit } from "@/lib/gabarits";
 import { publierMedia } from "@/lib/publier-media";
@@ -51,7 +51,7 @@ export async function publierGabarit(formData: FormData) {
   try {
     const photoUrl = media ? supabase.storage.from("media").getPublicUrl(media).data.publicUrl : null;
     const image = await rendreElement(
-      gabaritElement(gabarit, THEMES[themeCle] ?? THEMES.vert, { ...champs, photoUrl })
+      gabaritElement(gabarit, await unTheme(supabase, brandId, themeCle), { ...champs, photoUrl })
     );
     const png = Buffer.from(await image.arrayBuffer());
 

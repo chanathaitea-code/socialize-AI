@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
-import { THEMES } from "@/lib/story";
+import { chargerThemes } from "@/lib/design";
 import { versSaisieParis } from "@/lib/semaine";
 import { GABARITS, type Gabarit } from "@/lib/gabarits";
 import Nav from "../nav";
@@ -78,7 +78,7 @@ export default async function StoriesPage({
   const premier = (slots ?? [])[0];
   const lieuDuJour = premier ? `${premier.note ?? ""}${premier.time_range ? ` · ${premier.time_range}` : ""}` : "";
 
-  const themes = Object.entries(THEMES).map(([cle, t]) => ({ cle, nom: t.nom }));
+  const themes = Object.entries(await chargerThemes(supabase)).map(([cle, t]) => ({ cle, nom: t.nom }));
   const defautQuand = versSaisieParis(new Date(Date.now() + 60 * 60_000));
 
   return (
