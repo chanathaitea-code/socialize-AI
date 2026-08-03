@@ -63,14 +63,42 @@ Ambiance visuelle souhaitée, dans les mots du patron : ${description}`
 }
 
 /**
- * Fond fabriqué par un modèle d'images, au format vertical d'une story.
- * La génération d'images n'est pas comprise dans le palier gratuit de Google :
- * sans clé facturée, on le dit clairement plutôt que d'échouer en silence.
+ * La consigne à coller dans ChatGPT (ou n'importe quel outil d'images) pour
+ * obtenir un visuel utilisable tel quel comme fond de story. Tout est dedans :
+ * le format vertical, l'interdiction d'écrire du texte, et le style de la
+ * marque tel que le patron l'a décrit.
+ */
+export function consignePourOutilExterne(sujet: string, style: string, marque: string): string {
+  return [
+    `Image verticale 9:16 (1080 × 1920 pixels) pour une story Instagram de ${marque}, food truck de street food thaïlandaise en Île-de-France.`,
+    "",
+    `Sujet : ${sujet.trim() || "un plat thaïlandais fumant, vu de près"}`,
+    "",
+    style.trim() ? `Style voulu : ${style.trim()}` : "Style : photographie réaliste, lumière naturelle, rendu appétissant.",
+    "",
+    "Contraintes :",
+    "— aucun texte, aucun logo, aucun filigrane dans l'image ;",
+    "— cadrage vertical strict, le sujet centré dans la moitié haute ;",
+    "— zones calmes en haut et en bas, du texte sera ajouté par-dessus ensuite ;",
+    "— rendu photographique réaliste, pas d'illustration ni de rendu 3D ;",
+    "— pas de mains ni de visages en gros plan.",
+    "",
+    "Renvoie une seule image.",
+  ].join("\n");
+}
+
+/**
+ * Fond fabriqué automatiquement par un modèle d'images. Deux fournisseurs
+ * possibles : OpenAI si une clé d'API est configurée, Google sinon. Dans les
+ * deux cas il s'agit d'une clé d'API facturée, pas d'un abonnement ChatGPT :
+ * sans elle, on le dit clairement plutôt que d'échouer en silence.
  */
 export async function genererFond(
   description: string,
   reference?: { base64: string; mime: string }
 ): Promise<Buffer> {
+  if (process.env.OPENAI_API_KEY) return genererFondOpenAI(description);
+
   const cle = process.env.GEMINI_IMAGE_API_KEY || process.env.GEMINI_API_KEY;
   if (!cle) throw new Error("aucune clé d'images configurée");
 
@@ -113,6 +141,29 @@ zone calme en haut et en bas pour laisser place à du texte ajouté ensuite.`,
   return Buffer.from(donnees, "base64");
 }
 
+/** Même chose côté OpenAI, si une clé d'API y est configurée. */
+async function genererFondOpenAI(description: string): Promise<Buffer> {
+  const r = await fetch("https://api.openai.com/v1/images/generations", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: process.env.OPENAI_IMAGE_MODEL || "gpt-image-2",
+      prompt: description,
+      size: "1024x1536",
+      n: 1,
+    }),
+    cache: "no-store",
+  });
+  const brut = await r.text();
+  if (!r.ok) throw new Error(lireErreur(brut) || `génération refusée (${r.status})`);
+  const donnees = trouverImage(JSON.parse(brut));
+  if (!donnees) throw new Error("le modèle n'a pas renvoyé d'image");
+  return Buffer.from(donnees, "base64");
+}
+
 function lireErreur(brut: string): string {
   try {
     const j = JSON.parse(brut);
@@ -143,6 +194,7 @@ function trouverImage(noeud: unknown): string | null {
     return o.data;
   }
   if (typeof o.imageBytes === "string" && o.imageBytes.length > 100) return o.imageBytes;
+  if (typeof o.b64_json === "string" && o.b64_json.length > 100) return o.b64_json;
   for (const v of Object.values(o)) {
     const t = trouverImage(v);
     if (t) return t;

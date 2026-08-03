@@ -3,6 +3,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { THEMES } from "@/lib/story";
 import Nav from "../nav";
 import Televerseur from "./televerseur";
+import Consigne from "./consigne";
 import {
   enregistrerDesign,
   fabriquerFond,
@@ -29,7 +30,7 @@ export default async function DesignPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: brands } = await supabase.from("brands").select("id, brand_brief").limit(1);
+  const { data: brands } = await supabase.from("brands").select("id, name, brand_brief").limit(1);
   const brand = brands?.[0];
   const brief = (brand?.brand_brief ?? {}) as Record<string, string>;
 
@@ -178,12 +179,27 @@ export default async function DesignPage({
           )}
         </section>
 
-        {/* 4. Les fonds fabriqués */}
-        <section className="bg-white border border-gray-200 rounded-xl p-5">
-          <h3 className="font-bold text-[#12211c]">Faire fabriquer une image par l&apos;IA</h3>
+        {/* 4. Le pont vers ChatGPT */}
+        <section className="bg-white border border-[#c8e2da] rounded-xl p-5">
+          <h3 className="font-bold text-[#12211c]">Fabriquer l&apos;image avec votre ChatGPT</h3>
           <p className="text-sm text-gray-500 mt-1">
-            Décrivez l&apos;image voulue. Elle est fabriquée au format vertical d&apos;une story et rangée dans vos
-            photos, prête à servir de fond. Vous pouvez partir d&apos;une de vos photos pour garder votre vrai plat.
+            Vous avez déjà ChatGPT : autant s&apos;en servir. L&apos;application écrit la consigne complète — format
+            vertical, style de votre marque, interdiction d&apos;écrire du texte dans l&apos;image — vous la collez,
+            vous enregistrez l&apos;image, et vous l&apos;importez ci-dessus dans vos photos.
+          </p>
+          <Consigne style={brief.design ?? ""} marque={String(brand?.name ?? "Chana Thaï")} />
+          <p className="text-xs text-gray-400 mt-4 leading-relaxed">
+            Pensez à demander le format vertical si ChatGPT vous renvoie un carré : c&apos;est écrit dans la consigne,
+            mais il l&apos;oublie parfois. Une image carrée reste utilisable, elle sera simplement recadrée.
+          </p>
+        </section>
+
+        {/* 5. Les fonds fabriqués automatiquement */}
+        <section className="bg-white border border-gray-200 rounded-xl p-5">
+          <h3 className="font-bold text-[#12211c]">Ou laisser l&apos;application la fabriquer</h3>
+          <p className="text-sm text-gray-500 mt-1">
+            Le même travail, sans quitter l&apos;application, si une clé d&apos;API d&apos;images est configurée.
+            Vous pouvez partir d&apos;une de vos photos pour garder votre vrai plat.
           </p>
           <form action={fabriquerFond} className="mt-4 grid gap-3">
             <textarea
@@ -213,9 +229,9 @@ export default async function DesignPage({
             </div>
           </form>
           <p className="text-xs text-gray-400 mt-3 leading-relaxed">
-            La fabrication d&apos;images n&apos;est pas comprise dans la clé Google gratuite : elle demande d&apos;activer
-            la facturation sur le compte Google AI, pour environ quatre centimes par image. Tant que ce n&apos;est pas
-            fait, le bouton vous le dira au lieu d&apos;échouer en silence. Les couleurs, elles, fonctionnent déjà.
+            Attention : un abonnement ChatGPT ne suffit pas ici, c&apos;est une clé d&apos;API facturée qu&apos;il faut,
+            chez OpenAI ou chez Google, pour environ quatre centimes par image. Tant qu&apos;il n&apos;y en a pas, le
+            bouton vous le dira au lieu d&apos;échouer en silence — et la solution du dessus, elle, ne coûte rien de plus.
           </p>
         </section>
       </div>
