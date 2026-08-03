@@ -3,12 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
-import { dechiffrer } from "@/lib/crypto";
-import { JOURS, MOIS, iso } from "@/lib/semaine";
-import { THEMES } from "@/lib/story";
-import { jourImageElement } from "@/lib/jour-image";
-import { rendreElement } from "@/lib/story-render";
-import { publierPhotoFacebook, publierStoryInstagram } from "@/lib/meta";
+import { iso } from "@/lib/semaine";
+import { publierLaJournee } from "@/lib/publier-jour";
 
 /** Date d'aujourd'hui à Paris, au format AAAA-MM-JJ. */
 function aujourdhuiParis(): Date {
@@ -47,83 +43,14 @@ export async function publierStoryDuJour(formData: FormData) {
   if (!brandId) retour("err=Marque%20introuvable");
 
   try {
-    const jour = aujourdhuiParis();
-    const { data: slots } = await supabase
-      .from("location_schedule")
-      .select("service, time_range, note, status")
-      .eq("brand_id", brandId!)
-      .eq("day", iso(jour))
-      .neq("status", "cancelled")
-      .order("service");
-
-    const services = (slots ?? []).map((s) => ({
-      label: s.service === "midi" ? "MIDI" : "SOIR",
-      lieu: s.note ?? "",
-      horaires: s.time_range ?? "",
-    }));
-
-    const indice = (jour.getUTCDay() + 6) % 7;
-    const image = await rendreElement(
-      jourImageElement({
-        theme: THEMES[theme] ?? THEMES.vert,
-        jourLong: JOURS[indice],
-        dateCourte: `${jour.getUTCDate()} ${MOIS[jour.getUTCMonth()]}`,
-        services,
-        photoUrl: media ? supabase.storage.from("media").getPublicUrl(media).data.publicUrl : null,
-        meteo: meteo || undefined,
-      })
-    );
-    const png = Buffer.from(await image.arrayBuffer());
-
-    const chemin = `${brandId}/jour/${iso(jour)}-${Date.now()}.png`;
-    const { error: upErr } = await supabase.storage
-      .from("media")
-      .upload(chemin, png, { contentType: "image/png", upsert: false });
-    if (upErr) throw new Error(upErr.message);
-    const url = supabase.storage.from("media").getPublicUrl(chemin).data.publicUrl;
-
-    const legende =
-      services.length === 0
-        ? "Le camion se repose aujourd'hui, on recharge les woks 🍜"
-        : `📍 Aujourd'hui, ${services.map((s) => `${s.label.toLowerCase()} ${s.lieu} (${s.horaires})`).join(" et ")}. On vous attend 🍜`;
-
-    const { data: comptes } = await supabase
-      .from("social_accounts")
-      .select("platform, external_id, encrypted_credentials")
-      .eq("brand_id", brandId!);
-    const resultats: { platform: string; status: string; remote_id?: string; error?: string }[] = [];
-
-    for (const cible of cibles) {
-      const c = (comptes ?? []).find((x) => x.platform === cible);
-      if (!c) {
-        resultats.push({ platform: cible, status: "failed", error: "compte non connecté" });
-        continue;
-      }
-      try {
-        const jeton = dechiffrer(String(c.encrypted_credentials));
-        const id =
-          cible === "instagram"
-            ? await publierStoryInstagram(String(c.external_id), jeton, url)
-            : await publierPhotoFacebook(String(c.external_id), jeton, url, legende);
-        resultats.push({ platform: cible, status: "published", remote_id: id });
-      } catch (e) {
-        resultats.push({ platform: cible, status: "failed", error: e instanceof Error ? e.message : "échec" });
-      }
-    }
-
-    await supabase.from("publication_log").insert(
-      resultats.map((r) => ({
-        brand_id: brandId!,
-        platform: r.platform,
-        kind: "jour",
-        status: r.status,
-        remote_id: r.remote_id ?? null,
-        caption: legende,
-        media_url: url,
-        error: r.error ?? null,
-      }))
-    );
-
+    const resultats = await publierLaJournee(supabase, {
+      brandId: brandId!,
+      jour: aujourdhuiParis(),
+      theme,
+      mediaPath: media,
+      cibles,
+      meteo: meteo || undefined,
+    });
     revalidatePath("/jour");
     revalidatePath("/journal");
     const echecs = resultats.filter((r) => r.status === "failed");
@@ -135,6 +62,28 @@ export async function publierStoryDuJour(formData: FormData) {
     }
     retour(`err=${encodeURIComponent(e instanceof Error ? e.message : "publication impossible")}`);
   }
+}
+
+/** Active ou coupe la story automatique du matin. */
+export async function basculerJourAuto(formData: FormData) {
+  const supabase = await supabaseServer();
+  const actif = String(formData.get("actif") ?? "false") === "true";
+  const heure = Math.max(5, Math.min(14, parseInt(String(formData.get("heure") ?? "9"), 10) || 9));
+  const { data: brands } = await supabase.from("brands").select("id").limit(1);
+  const brandId = brands?.[0]?.id as string | undefined;
+  if (!brandId) redirect("/jour?err=Marque%20introuvable");
+
+  const { error } = await supabase
+    .from("story_auto")
+    .upsert(
+      { brand_id: brandId, jour_enabled: !actif, jour_hour_paris: heure },
+      { onConflict: "brand_id" }
+    );
+  if (error) redirect(`/jour?err=${encodeURIComponent(error.message)}`);
+  revalidatePath("/jour");
+  redirect(
+    `/jour?ok=${actif ? "Story%20du%20matin%20coup%C3%A9e" : encodeURIComponent(`Story du matin activée à ${heure}h`)}`
+  );
 }
 
 /** Signale une rupture depuis l'écran du matin, sans passer par Ma marque. */

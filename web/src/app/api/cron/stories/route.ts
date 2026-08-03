@@ -5,6 +5,7 @@ import { publierLaStory } from "@/lib/publish";
 import { rafraichirMesures } from "@/lib/insights";
 import { publierMedia } from "@/lib/publier-media";
 import { dechiffrer } from "@/lib/crypto";
+import { publierLaJournee } from "@/lib/publier-jour";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -76,6 +77,56 @@ export async function GET(req: NextRequest) {
     });
     await supabase.from("story_auto").update({ last_run_week: iso(cible) }).eq("brand_id", r.brand_id);
     journal.push(`rendez-vous hebdomadaire programmé pour ${r.brand_id}`);
+  }
+
+  // 1 bis. Story du matin : « on est là aujourd'hui », les jours de service
+  for (const r of reglages ?? []) {
+    if (!r.jour_enabled || enPause.has(r.brand_id)) continue;
+    if ((r.jour_hour_paris ?? 9) !== heure) continue;
+    const cejour = mondayOf(0);
+    const today = new Date();
+    const aujourdhui = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Europe/Paris",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(today);
+    void cejour;
+    if (r.jour_last_run === aujourdhui) continue;
+
+    const { data: services } = await supabase
+      .from("location_schedule")
+      .select("id, status")
+      .eq("brand_id", r.brand_id)
+      .eq("day", aujourdhui)
+      .neq("status", "cancelled");
+    // Pas de service aujourd'hui : on ne raconte pas le repos tous les jours
+    await supabase.from("story_auto").update({ jour_last_run: aujourdhui }).eq("brand_id", r.brand_id);
+    if (!services?.length) {
+      journal.push(`story du matin ignorée pour ${r.brand_id} : pas de service`);
+      continue;
+    }
+
+    const { data: photo } = await supabase
+      .from("media_assets")
+      .select("storage_path")
+      .eq("brand_id", r.brand_id)
+      .eq("kind", "photo")
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    try {
+      const resultats = await publierLaJournee(supabase, {
+        brandId: r.brand_id,
+        jour: new Date(aujourdhui + "T00:00:00Z"),
+        theme: r.theme ?? "vert",
+        mediaPath: photo?.[0]?.storage_path ?? null,
+        cibles: r.jour_targets ?? ["instagram"],
+      });
+      journal.push(`story du matin : ${resultats.map((x) => `${x.platform} ${x.status}`).join(", ")}`);
+    } catch (e) {
+      journal.push(`story du matin en échec : ${e instanceof Error ? e.message : "erreur"}`);
+    }
   }
 
   // 2. Envois arrivés à échéance

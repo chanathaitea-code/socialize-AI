@@ -4,7 +4,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { JOURS, MOIS, iso } from "@/lib/semaine";
 import { meteoDuJour, type Meteo } from "@/lib/meteo";
 import Nav from "../nav";
-import { basculerRupture, publierStoryDuJour } from "./actions";
+import { basculerJourAuto, basculerRupture, publierStoryDuJour } from "./actions";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -91,6 +91,13 @@ export default async function JourPage({
     chemin: m.storage_path as string,
     url: supabase.storage.from("media").getPublicUrl(m.storage_path as string).data.publicUrl,
   }));
+
+  const { data: reglages } = await supabase
+    .from("story_auto")
+    .select("jour_enabled, jour_hour_paris")
+    .limit(1);
+  const jourAuto = reglages?.[0]?.jour_enabled ?? false;
+  const heureAuto = reglages?.[0]?.jour_hour_paris ?? 9;
 
   const { data: comptes } = await supabase.from("social_accounts").select("platform, status");
   const igPret = (comptes ?? []).some((c) => c.platform === "instagram" && c.status === "connected");
@@ -278,6 +285,42 @@ export default async function JourPage({
               Publier maintenant
             </button>
           </div>
+        </form>
+
+        <form
+          action={basculerJourAuto}
+          className={`mt-4 rounded-xl border p-5 flex items-center gap-4 flex-wrap ${
+            jourAuto ? "border-[#c8e2da] bg-[#f7fbf9]" : "border-gray-200 bg-white"
+          }`}
+        >
+          <input type="hidden" name="actif" value={String(jourAuto)} />
+          <div className="flex-1 min-w-[240px]">
+            <div className="font-bold text-[#12211c]">Story du matin automatique</div>
+            <div className="text-sm text-gray-500">
+              Les jours où vous avez un service, la story part toute seule avec votre dernière photo. Les jours de
+              repos, rien n&apos;est publié.
+            </div>
+          </div>
+          <label className="text-sm text-gray-600 flex items-center gap-2">
+            à
+            <select name="heure" defaultValue={String(heureAuto)} className="border border-gray-300 rounded-lg px-2 py-1.5 bg-white">
+              {[7, 8, 9, 10, 11].map((h) => (
+                <option key={h} value={h}>
+                  {h}h
+                </option>
+              ))}
+            </select>
+          </label>
+          <span
+            className={`text-[11px] font-bold uppercase rounded-full px-3 py-1 ${
+              jourAuto ? "bg-[#e5f2ee] text-[#0f6b53]" : "bg-gray-100 text-gray-500"
+            }`}
+          >
+            {jourAuto ? `activée à ${heureAuto}h` : "coupée"}
+          </span>
+          <button className="text-sm border border-gray-300 rounded-lg px-4 py-2 font-semibold hover:border-[#0f6b53] hover:text-[#0f6b53]">
+            {jourAuto ? "Couper" : "Activer"}
+          </button>
         </form>
 
         <p className="text-xs text-gray-400 mt-6">
