@@ -50,6 +50,15 @@ export interface Opportunity {
   signals: OpportunityInputs;
   /** Rayon de la marque, pour le critère distance. */
   radiusKm: number;
+  // Colonnes propres aux événements (family = dated_event).
+  startsOn: string | null;
+  endsOn: string | null;
+  applicationDeadline: string | null;
+  organizer: string | null;
+  contactName: string | null;
+  contactEmail: string | null;
+  contactPhone: string | null;
+  sourceUrl: string | null;
 }
 
 export interface ScoredOpportunity extends Opportunity {
@@ -81,6 +90,18 @@ export function rankOpportunities(
       // un verrou n'est pas une nuance de classement.
       if (a.result.disqualified !== b.result.disqualified) {
         return a.result.disqualified ? 1 : -1;
+      }
+      // Échéance d'abord : ce qui a une date limite prime, la plus proche en
+      // tête. Pour un événement, l'échéance est l'information décisive — la
+      // rater coûte une année. Le reste se classe ensuite par score.
+      const ad = a.applicationDeadline;
+      const bd = b.applicationDeadline;
+      if (ad && bd) {
+        if (ad !== bd) return ad < bd ? -1 : 1;
+      } else if (ad) {
+        return -1;
+      } else if (bd) {
+        return 1;
       }
       return b.result.score - a.result.score;
     });
@@ -122,6 +143,14 @@ interface OpportunityRow {
   distance_km: number | null;
   authorization_regime: AuthorizationRegime | null;
   notes: string | null;
+  starts_on: string | null;
+  ends_on: string | null;
+  application_deadline: string | null;
+  organizer: string | null;
+  contact_name: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
+  source_url: string | null;
   prospect_companies: CompanyRow | CompanyRow[] | null;
   prospect_places: PlaceRow | PlaceRow[] | null;
 }
@@ -159,6 +188,8 @@ export async function loadOpportunities(
     .select(
       `id, name, city, address, family, lat, lng, distance_km,
        authorization_regime, notes,
+       starts_on, ends_on, application_deadline, organizer,
+       contact_name, contact_email, contact_phone, source_url,
        prospect_companies ( headcount_estimate, created_on ),
        prospect_places ( category, parking_estimate, access_estimate,
                           footfall_estimate, nearby_food_count, has_canteen )`,
@@ -206,6 +237,14 @@ export async function loadOpportunities(
       readingNote: row.notes ?? undefined,
       signals,
       radiusKm,
+      startsOn: row.starts_on,
+      endsOn: row.ends_on,
+      applicationDeadline: row.application_deadline,
+      organizer: row.organizer,
+      contactName: row.contact_name,
+      contactEmail: row.contact_email,
+      contactPhone: row.contact_phone,
+      sourceUrl: row.source_url,
     };
   });
 }

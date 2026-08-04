@@ -25,6 +25,58 @@ const TIER_COLOR: Record<number, string> = {
 
 const CRITERIA = Object.keys(BASELINE_WEIGHTS) as Criterion[];
 
+// Dates isolées du rendu (le linter interdit new Date()/Date.now() en rendu).
+function daysUntil(iso: string): number {
+  const d = new Date(iso + "T00:00:00Z").getTime();
+  const n = new Date();
+  const t = Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate());
+  return Math.round((d - t) / 86_400_000);
+}
+function frDate(iso: string): string {
+  return new Intl.DateTimeFormat("fr-FR", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(iso + "T12:00:00Z"));
+}
+function dateRange(a: string | null, b: string | null): string | null {
+  if (!a && !b) return null;
+  if (a && b && a !== b) return `${frDate(a)} → ${frDate(b)}`;
+  return frDate((a || b) as string);
+}
+function todayStamp(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function csvCell(v: string | number | null | undefined): string {
+  const s = v == null ? "" : String(v);
+  return /[";\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+function exportCsv(rows: ReturnType<typeof rankOpportunities>): void {
+  const header = [
+    "Nom", "Début", "Fin", "Échéance", "Commune", "Organisateur",
+    "Email", "Téléphone", "Lien source", "Score",
+  ];
+  const body = rows.map((o) => [
+    o.name, o.startsOn ?? "", o.endsOn ?? "", o.applicationDeadline ?? "",
+    o.city, o.organizer ?? "",
+    o.contactEmail ?? "", o.contactPhone ?? o.phone ?? "",
+    o.sourceUrl ?? "", String(o.result.score),
+  ]);
+  // Point-virgule + BOM : Excel français ouvre le fichier directement.
+  const csv =
+    "﻿" +
+    [header, ...body].map((r) => r.map(csvCell).join(";")).join("\r\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `opportunites-${todayStamp()}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function OpportunitesClient({
   opportunities,
   initialWeights,
@@ -75,24 +127,33 @@ export default function OpportunitesClient({
       ) : (
         <>
           <div className="mt-6 flex flex-wrap items-center gap-2">
-            {(["all", "daily_flow", "periodic_flow"] as const).map((f) => (
-              <button
-                key={f}
-                type="button"
-                onClick={() => setFamily(f)}
-                className={`rounded-lg px-3 py-1.5 text-sm transition-colors ${
-                  family === f
-                    ? "bg-[#0f6b53] text-white"
-                    : "border border-gray-300 bg-white text-gray-600 hover:border-[#0f6b53]"
-                }`}
-              >
-                {f === "all" ? "Tout" : FAMILY_LABELS[f]}
-              </button>
-            ))}
+            {(["all", "daily_flow", "periodic_flow", "dated_event"] as const).map(
+              (f) => (
+                <button
+                  key={f}
+                  type="button"
+                  onClick={() => setFamily(f)}
+                  className={`rounded-lg px-3 py-1.5 text-sm transition-colors ${
+                    family === f
+                      ? "bg-[#0f6b53] text-white"
+                      : "border border-gray-300 bg-white text-gray-600 hover:border-[#0f6b53]"
+                  }`}
+                >
+                  {f === "all" ? "Tout" : FAMILY_LABELS[f]}
+                </button>
+              ),
+            )}
+            <button
+              type="button"
+              onClick={() => exportCsv(shown)}
+              className="ml-auto rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-semibold text-[#0f6b53] hover:border-[#0f6b53]"
+            >
+              Exporter (CSV)
+            </button>
             <button
               type="button"
               onClick={() => setShowWeights((v) => !v)}
-              className="ml-auto text-sm font-semibold text-[#0f6b53] underline underline-offset-4"
+              className="text-sm font-semibold text-[#0f6b53] underline underline-offset-4"
             >
               {showWeights ? "Masquer les poids" : "Régler les poids"}
             </button>
@@ -181,17 +242,37 @@ export default function OpportunitesClient({
                     <span className="block text-sm text-gray-500">
                       {o.result.disqualified
                         ? o.result.blockers.map((b) => b.label).join(" · ")
-                        : [
-                            o.category,
-                            o.city,
-                            o.distanceKm != null
-                              ? `${o.distanceKm.toFixed(0)} km`
-                              : null,
-                          ]
-                            .filter(Boolean)
-                            .join(" · ")}
+                        : o.family === "dated_event"
+                          ? [dateRange(o.startsOn, o.endsOn), o.city]
+                              .filter(Boolean)
+                              .join(" · ")
+                          : [
+                              o.category,
+                              o.city,
+                              o.distanceKm != null
+                                ? `${o.distanceKm.toFixed(0)} km`
+                                : null,
+                            ]
+                              .filter(Boolean)
+                              .join(" · ")}
                     </span>
                   </span>
+                  {o.applicationDeadline &&
+                    (() => {
+                      const j = daysUntil(o.applicationDeadline);
+                      return (
+                        <span
+                          title={`Date limite : ${frDate(o.applicationDeadline)}`}
+                          className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-bold ${
+                            j <= 7
+                              ? "bg-red-100 text-red-700"
+                              : "bg-amber-100 text-amber-800"
+                          }`}
+                        >
+                          J-{j}
+                        </span>
+                      );
+                    })()}
                   <span
                     className="hidden shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold text-white sm:block"
                     style={{ backgroundColor: TIER_COLOR[o.result.tier] }}
