@@ -192,9 +192,11 @@ async function stepEvents(
     counters.found = page.results.length;
 
     // Tri des formats à l'ingestion : on n'insère que les événements publics,
-    // sur place, d'au moins une demi-journée, hors formats de salle.
+    // sur place, d'au moins trois heures, hors formats de salle. Une durée
+    // inconnue est retenue (et marquée plus bas), pas écartée.
     const kept = page.results.filter((ev) => classifyEvent(ev) === null);
     const rejected = page.results.length - kept.length;
+    const unknownDuration = kept.filter((ev) => ev.durationHours == null).length;
 
     const candidates = kept
       .map((ev) => {
@@ -224,7 +226,11 @@ async function stepEvents(
         contact_email: ev.contactEmail,
         contact_phone: ev.contactPhone,
         source_url: ev.sourceUrl,
-        notes: ev.description ? ev.description.slice(0, 500) : null,
+        // Durée inconnue : on retient mais on marque, pour que ces événements
+        // (souvent ceux des petites communes) restent identifiables en base.
+        notes:
+          (ev.durationHours == null ? "[duree_inconnue] " : "") +
+            (ev.description ? ev.description.slice(0, 500) : "") || null,
         dedupe_key: key,
       }));
       const { error } = await supabase
@@ -242,7 +248,7 @@ async function stepEvents(
     await writeCursor(supabase, brandId, "openagenda", scopeKey, nextIndex, total);
     await logRun(supabase, brandId, "openagenda", started, counters, null);
     journal.push(
-      `événements ${brandId} : ${counters.created} nouveaux, ${counters.duplicates} doublons, ${rejected} hors critères`,
+      `événements ${brandId} : ${counters.created} nouveaux (dont ${unknownDuration} durée inconnue), ${counters.duplicates} doublons, ${rejected} hors critères`,
     );
   } catch (e) {
     const msg = e instanceof Error ? e.message : "échec événements";

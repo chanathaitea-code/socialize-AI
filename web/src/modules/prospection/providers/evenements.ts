@@ -79,6 +79,8 @@ interface ApiRecord {
   firstdate_begin?: string | null;
   firstdate_end?: string | null;
   lastdate_end?: string | null;
+  /** Toutes les occurrences, sérialisées en JSON par la source. */
+  timings?: string | null;
   attendancemode?: { id?: number } | null;
   location_name?: string | null;
   location_address?: string | null;
@@ -98,15 +100,38 @@ function toDate(v: string | null | undefined): string | null {
   return v.slice(0, 10);
 }
 
-function durationHours(
-  begin: string | null | undefined,
-  end: string | null | undefined,
-): number | null {
+function span(begin: string | null | undefined, end: string | null | undefined): number | null {
   if (!begin || !end) return null;
   const a = new Date(begin).getTime();
   const b = new Date(end).getTime();
   if (Number.isNaN(a) || Number.isNaN(b) || b <= a) return null;
   return (b - a) / 3_600_000;
+}
+
+/**
+ * Durée de l'occurrence la plus longue, en heures.
+ *
+ * On mesure sur la plus longue occurrence, pas la première : un festival de
+ * trois jours dont l'ouverture est une soirée de deux heures est exactement la
+ * cible, il ne doit pas être écarté sur son premier créneau. Les occurrences
+ * sont dans `timings` (JSON sérialisé) ; à défaut, on retombe sur firstdate.
+ * Renvoie null quand rien n'est exploitable — une durée inconnue n'est pas nulle.
+ */
+function longestOccurrenceHours(r: ApiRecord): number | null {
+  let max: number | null = null;
+  if (r.timings) {
+    try {
+      const occ = JSON.parse(r.timings) as Array<{ begin?: string; end?: string }>;
+      for (const o of occ) {
+        const h = span(o.begin, o.end);
+        if (h != null && (max == null || h > max)) max = h;
+      }
+    } catch {
+      // timings illisible : on tentera firstdate ci-dessous
+    }
+  }
+  if (max == null) max = span(r.firstdate_begin, r.firstdate_end);
+  return max;
 }
 
 function coords(
@@ -139,7 +164,7 @@ function mapRecord(r: ApiRecord): EventRecord | null {
     sourceUrl: r.canonicalurl ?? null,
     keywords: Array.isArray(r.keywords_fr) ? r.keywords_fr : [],
     physical: (r.attendancemode?.id ?? 1) !== 2,
-    durationHours: durationHours(r.firstdate_begin, r.firstdate_end),
+    durationHours: longestOccurrenceHours(r),
   };
 }
 
@@ -153,9 +178,13 @@ function mapRecord(r: ApiRecord): EventRecord | null {
  * détecter le plein air par un signal positif, qui manquerait la moitié des
  * marchés : on retire les formats clos, et ce qui reste tient dehors.
  *
- * Renvoie la raison du rejet, ou null si l'événement est retenu.
+ * Renvoie la raison du rejet, ou null si l'événement est retenu. Une durée
+ * inconnue ne rejette pas : elle est retenue et marquée à l'insertion, comme au
+ * scoring — une donnée manquante n'est pas une donnée nulle. Les événements mal
+ * renseignés sont surtout ceux des petites communes, là où la concurrence est
+ * la plus faible.
  */
-const MIN_DURATION_HOURS = 4;
+const MIN_DURATION_HOURS = 3;
 
 const INDOOR_FORMATS = [
   // conférence
@@ -186,7 +215,7 @@ const INDOOR_RE = new RegExp(
 export function classifyEvent(ev: EventRecord): string | null {
   if (!ev.physical) return "en ligne";
   if (ev.durationHours != null && ev.durationHours < MIN_DURATION_HOURS) {
-    return "moins d'une demi-journée";
+    return "moins de trois heures";
   }
   const haystack = normalize([ev.title, ...ev.keywords].join(" "));
   const m = haystack.match(INDOOR_RE);
