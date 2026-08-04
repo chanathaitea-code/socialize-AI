@@ -216,6 +216,9 @@ async function stepEvents(
     counters.duplicates = candidates.length - fresh.length;
 
     let enriched = 0;
+    let enrichAttempted = 0;
+    let budgetSkipped = 0;
+    let lastLookupNote = "";
 
     if (fresh.length > 0) {
       // Enrichissement des contacts par l'annuaire des mairies, quand
@@ -255,11 +258,17 @@ async function stepEvents(
         let phone = ev.contactPhone;
         const estimatedFields: string[] = [];
         const canLookup = ev.insee || ev.postalCode;
-        if ((!email || !phone) && canLookup && Date.now() < deadlineMs) {
-          const m = await mairieFor({ insee: ev.insee, city: ev.city, postalCode: ev.postalCode });
-          if (m) {
-            if (!email && m.email) { email = m.email; estimatedFields.push("contact_email"); }
-            if (!phone && m.phone) { phone = m.phone; estimatedFields.push("contact_phone"); }
+        if ((!email || !phone) && canLookup) {
+          if (Date.now() < deadlineMs) {
+            enrichAttempted++;
+            const m = await mairieFor({ insee: ev.insee, city: ev.city, postalCode: ev.postalCode });
+            lastLookupNote = annuaire.lastStatus;
+            if (m) {
+              if (!email && m.email) { email = m.email; estimatedFields.push("contact_email"); }
+              if (!phone && m.phone) { phone = m.phone; estimatedFields.push("contact_phone"); }
+            }
+          } else {
+            budgetSkipped++;
           }
         }
         if (estimatedFields.length) enriched++;
@@ -326,8 +335,17 @@ async function stepEvents(
     const nextIndex =
       page.results.length < EVENT_FETCH ? 0 : cursor.last_index + page.results.length;
     counters.cells_processed = 1;
+    // Diagnostic d'enrichissement, écrit dans veille_runs.error (préfixé "diag:")
+    // pour être lisible sans redéploiement : distingue "budget" de "annuaire KO".
+    let diag: string | null = null;
+    if (fresh.length > 0 && enriched === 0) {
+      diag =
+        enrichAttempted === 0
+          ? `diag: enrichissement non tenté (${budgetSkipped} reportés budget, ${fresh.length - budgetSkipped} sans commune)`
+          : `diag: enrichi 0/${enrichAttempted} — annuaire: ${lastLookupNote || "?"}`;
+    }
     await writeCursor(supabase, brandId, "openagenda", scopeKey, nextIndex, total);
-    await logRun(supabase, brandId, "openagenda", started, counters, null);
+    await logRun(supabase, brandId, "openagenda", started, counters, diag);
     journal.push(
       `événements ${brandId} : ${counters.created} nouveaux (dont ${unknownDuration} durée inconnue, ${enriched} enrichis mairie), ${counters.duplicates} doublons, ${rejected} hors critères`,
     );
