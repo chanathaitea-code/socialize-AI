@@ -65,8 +65,12 @@ async function logRun(
   startedAt: string,
   counters: RunCounters,
   error: string | null,
+  diagnostic: string | null = null,
 ) {
-  await supabase.from("veille_runs").insert({
+  // error = vrai échec (comptable) ; diagnostic = information (jamais compté
+  // comme un échec). Deux colonnes distinctes pour ne pas fausser le comptage
+  // des passages en erreur.
+  const base = {
     brand_id: brandId,
     source,
     started_at: startedAt,
@@ -76,7 +80,15 @@ async function logRun(
     created: counters.created,
     duplicates: counters.duplicates,
     error,
-  });
+  };
+  const { error: insertErr } = await supabase
+    .from("veille_runs")
+    .insert({ ...base, diagnostic });
+  // Repli si la colonne diagnostic n'existe pas encore : on garde la ligne,
+  // on ne perd que le diagnostic (rien n'est jamais écrit dans error).
+  if (insertErr) {
+    await supabase.from("veille_runs").insert(base);
+  }
 }
 
 async function readCursor(
@@ -335,17 +347,19 @@ async function stepEvents(
     const nextIndex =
       page.results.length < EVENT_FETCH ? 0 : cursor.last_index + page.results.length;
     counters.cells_processed = 1;
-    // Diagnostic d'enrichissement, écrit dans veille_runs.error (préfixé "diag:")
-    // pour être lisible sans redéploiement : distingue "budget" de "annuaire KO".
+    // Diagnostic d'enrichissement, écrit dans veille_runs.diagnostic (colonne
+    // dédiée, jamais dans error) : distingue "budget" de "annuaire KO".
     let diag: string | null = null;
     if (fresh.length > 0 && enriched === 0) {
       diag =
         enrichAttempted === 0
-          ? `diag: enrichissement non tenté (${budgetSkipped} reportés budget, ${fresh.length - budgetSkipped} sans commune)`
-          : `diag: enrichi 0/${enrichAttempted} — annuaire: ${lastLookupNote || "?"}`;
+          ? `enrichissement non tenté (${budgetSkipped} reportés budget, ${fresh.length - budgetSkipped} sans commune)`
+          : `enrichi 0/${enrichAttempted} — annuaire: ${lastLookupNote || "?"}`;
+    } else if (enriched > 0) {
+      diag = `enrichi ${enriched}/${enrichAttempted} (annuaire: ${lastLookupNote || "ok"})`;
     }
     await writeCursor(supabase, brandId, "openagenda", scopeKey, nextIndex, total);
-    await logRun(supabase, brandId, "openagenda", started, counters, diag);
+    await logRun(supabase, brandId, "openagenda", started, counters, null, diag);
     journal.push(
       `événements ${brandId} : ${counters.created} nouveaux (dont ${unknownDuration} durée inconnue, ${enriched} enrichis mairie), ${counters.duplicates} doublons, ${rejected} hors critères`,
     );
