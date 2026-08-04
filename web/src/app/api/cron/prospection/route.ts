@@ -65,8 +65,12 @@ async function logRun(
   startedAt: string,
   counters: RunCounters,
   error: string | null,
+  diagnostic: string | null = null,
 ) {
-  await supabase.from("veille_runs").insert({
+  // error = vrai échec (comptable) ; diagnostic = information (jamais compté
+  // comme un échec). Deux colonnes distinctes pour ne pas fausser le comptage
+  // des passages en erreur.
+  const base = {
     brand_id: brandId,
     source,
     started_at: startedAt,
@@ -76,7 +80,15 @@ async function logRun(
     created: counters.created,
     duplicates: counters.duplicates,
     error,
-  });
+  };
+  const { error: insertErr } = await supabase
+    .from("veille_runs")
+    .insert({ ...base, diagnostic });
+  // Repli si la colonne diagnostic n'existe pas encore : on garde la ligne,
+  // on ne perd que le diagnostic (rien n'est jamais écrit dans error).
+  if (insertErr) {
+    await supabase.from("veille_runs").insert(base);
+  }
 }
 
 async function readCursor(
@@ -216,6 +228,9 @@ async function stepEvents(
     counters.duplicates = candidates.length - fresh.length;
 
     let enriched = 0;
+    let enrichAttempted = 0;
+    let budgetSkipped = 0;
+    let lastLookupNote = "";
 
     if (fresh.length > 0) {
       // Enrichissement des contacts par l'annuaire des mairies, quand
@@ -255,11 +270,17 @@ async function stepEvents(
         let phone = ev.contactPhone;
         const estimatedFields: string[] = [];
         const canLookup = ev.insee || ev.postalCode;
-        if ((!email || !phone) && canLookup && Date.now() < deadlineMs) {
-          const m = await mairieFor({ insee: ev.insee, city: ev.city, postalCode: ev.postalCode });
-          if (m) {
-            if (!email && m.email) { email = m.email; estimatedFields.push("contact_email"); }
-            if (!phone && m.phone) { phone = m.phone; estimatedFields.push("contact_phone"); }
+        if ((!email || !phone) && canLookup) {
+          if (Date.now() < deadlineMs) {
+            enrichAttempted++;
+            const m = await mairieFor({ insee: ev.insee, city: ev.city, postalCode: ev.postalCode });
+            lastLookupNote = annuaire.lastStatus;
+            if (m) {
+              if (!email && m.email) { email = m.email; estimatedFields.push("contact_email"); }
+              if (!phone && m.phone) { phone = m.phone; estimatedFields.push("contact_phone"); }
+            }
+          } else {
+            budgetSkipped++;
           }
         }
         if (estimatedFields.length) enriched++;
@@ -326,8 +347,19 @@ async function stepEvents(
     const nextIndex =
       page.results.length < EVENT_FETCH ? 0 : cursor.last_index + page.results.length;
     counters.cells_processed = 1;
+    // Diagnostic d'enrichissement, écrit dans veille_runs.diagnostic (colonne
+    // dédiée, jamais dans error) : distingue "budget" de "annuaire KO".
+    let diag: string | null = null;
+    if (fresh.length > 0 && enriched === 0) {
+      diag =
+        enrichAttempted === 0
+          ? `enrichissement non tenté (${budgetSkipped} reportés budget, ${fresh.length - budgetSkipped} sans commune)`
+          : `enrichi 0/${enrichAttempted} — annuaire: ${lastLookupNote || "?"}`;
+    } else if (enriched > 0) {
+      diag = `enrichi ${enriched}/${enrichAttempted} (annuaire: ${lastLookupNote || "ok"})`;
+    }
     await writeCursor(supabase, brandId, "openagenda", scopeKey, nextIndex, total);
-    await logRun(supabase, brandId, "openagenda", started, counters, null);
+    await logRun(supabase, brandId, "openagenda", started, counters, null, diag);
     journal.push(
       `événements ${brandId} : ${counters.created} nouveaux (dont ${unknownDuration} durée inconnue, ${enriched} enrichis mairie), ${counters.duplicates} doublons, ${rejected} hors critères`,
     );

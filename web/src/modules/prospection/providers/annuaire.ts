@@ -31,6 +31,8 @@ const BASE_URL =
   "https://api-lannuaire.service-public.fr/api/explore/v2.1/catalog/datasets/api-lannuaire-administration/records";
 /** API Géo (DINUM), publique et sans clé : code postal + commune → code INSEE. */
 const GEO_URL = "https://geo.api.gouv.fr/communes";
+/** Certaines passerelles publiques refusent une requête sans User-Agent. */
+const UA = "SocialFlowAI/1.0 (+https://socialflow.chanathai.fr)";
 
 function normalizeName(s: string): string {
   return s
@@ -83,9 +85,17 @@ function firstPhone(raw: string | null | undefined): string | null {
 
 export class ServicePublicAnnuaire implements AnnuaireProvider {
   readonly name = "annuaire.service-public.fr";
+  /**
+   * Issue de la dernière recherche, pour rendre l'enrichissement observable :
+   * "ok", "http:429", "aucune-mairie", "sans-contact", "fetch-error:…", etc.
+   */
+  lastStatus = "";
 
   async lookupByInsee(insee: string): Promise<MairieContact | null> {
-    if (!/^\d[\dAB]\d{3}$/.test(insee)) return null;
+    if (!/^\d[\dAB]\d{3}$/.test(insee)) {
+      this.lastStatus = "insee-invalide";
+      return null;
+    }
     await throttle();
 
     const params = new URLSearchParams({
@@ -93,19 +103,35 @@ export class ServicePublicAnnuaire implements AnnuaireProvider {
       select: "nom,pivot,telephone,adresse_courriel",
       limit: "20",
     });
-    const res = await fetch(`${BASE_URL}?${params}`, {
-      headers: { accept: "application/json" },
-      next: { revalidate: 60 * 60 * 24 * 7 },
-    });
-    if (!res.ok) return null;
+    let res: Response;
+    try {
+      res = await fetch(`${BASE_URL}?${params}`, {
+        headers: { accept: "application/json", "user-agent": UA },
+        next: { revalidate: 60 * 60 * 24 * 7 },
+      });
+    } catch (e) {
+      this.lastStatus = "fetch-error:" + (e instanceof Error ? e.message : "?");
+      return null;
+    }
+    if (!res.ok) {
+      this.lastStatus = "http:" + res.status;
+      return null;
+    }
 
     const body = (await res.json()) as { results?: AnnuaireRecord[] };
     const mairie = (body.results ?? []).find(isMairie);
-    if (!mairie) return null;
+    if (!mairie) {
+      this.lastStatus = "aucune-mairie";
+      return null;
+    }
 
     const email = mairie.adresse_courriel?.trim() || null;
     const phone = firstPhone(mairie.telephone);
-    if (!email && !phone) return null;
+    if (!email && !phone) {
+      this.lastStatus = "sans-contact";
+      return null;
+    }
+    this.lastStatus = "ok";
     return { email, phone };
   }
 
@@ -118,13 +144,25 @@ export class ServicePublicAnnuaire implements AnnuaireProvider {
     postalCode: string | null,
   ): Promise<string | null> {
     const cp = (postalCode ?? "").trim();
-    if (!/^\d{5}$/.test(cp)) return null;
+    if (!/^\d{5}$/.test(cp)) {
+      this.lastStatus = "cp-invalide";
+      return null;
+    }
     await throttle();
-    const res = await fetch(`${GEO_URL}?codePostal=${cp}&fields=code,nom`, {
-      headers: { accept: "application/json" },
-      next: { revalidate: 60 * 60 * 24 * 30 },
-    });
-    if (!res.ok) return null;
+    let res: Response;
+    try {
+      res = await fetch(`${GEO_URL}?codePostal=${cp}&fields=code,nom`, {
+        headers: { accept: "application/json", "user-agent": UA },
+        next: { revalidate: 60 * 60 * 24 * 30 },
+      });
+    } catch (e) {
+      this.lastStatus = "geo-fetch-error:" + (e instanceof Error ? e.message : "?");
+      return null;
+    }
+    if (!res.ok) {
+      this.lastStatus = "geo-http:" + res.status;
+      return null;
+    }
     const communes = (await res.json()) as Array<{ code?: string; nom?: string }>;
     if (communes.length === 0) return null;
     if (communes.length === 1) return communes[0].code ?? null;
