@@ -32,6 +32,12 @@ export interface EventRecord {
   lat: number | null;
   lng: number | null;
   sourceUrl: string | null;
+  /** Mots-clés libres de la source, utilisés pour le tri des formats. */
+  keywords: string[];
+  /** L'événement se tient sur place (pas en ligne). */
+  physical: boolean;
+  /** Durée de la première occurrence, en heures. Null si indéterminable. */
+  durationHours: number | null;
 }
 
 export interface EventQuery {
@@ -69,8 +75,11 @@ interface ApiRecord {
   uid?: string | number;
   title_fr?: string | null;
   description_fr?: string | null;
+  keywords_fr?: string[] | null;
   firstdate_begin?: string | null;
+  firstdate_end?: string | null;
   lastdate_end?: string | null;
+  attendancemode?: { id?: number } | null;
   location_name?: string | null;
   location_address?: string | null;
   location_postalcode?: string | null;
@@ -87,6 +96,17 @@ interface ApiRecord {
 function toDate(v: string | null | undefined): string | null {
   if (!v) return null;
   return v.slice(0, 10);
+}
+
+function durationHours(
+  begin: string | null | undefined,
+  end: string | null | undefined,
+): number | null {
+  if (!begin || !end) return null;
+  const a = new Date(begin).getTime();
+  const b = new Date(end).getTime();
+  if (Number.isNaN(a) || Number.isNaN(b) || b <= a) return null;
+  return (b - a) / 3_600_000;
 }
 
 function coords(
@@ -117,7 +137,61 @@ function mapRecord(r: ApiRecord): EventRecord | null {
     lat,
     lng,
     sourceUrl: r.canonicalurl ?? null,
+    keywords: Array.isArray(r.keywords_fr) ? r.keywords_fr : [],
+    physical: (r.attendancemode?.id ?? 1) !== 2,
+    durationHours: durationHours(r.firstdate_begin, r.firstdate_end),
   };
+}
+
+/**
+ * Tri des formats à l'ingestion, pas seulement à l'affichage.
+ *
+ * On garde ce qui a du sens pour un camion : un événement public, sur place,
+ * qui dure au moins une demi-journée. On écarte les formats de salle — les
+ * quatre nommés (conférence, lecture, exposition, atelier) et leurs cousins
+ * évidents (colloque, séminaire, projection, stage…). On ne cherche pas à
+ * détecter le plein air par un signal positif, qui manquerait la moitié des
+ * marchés : on retire les formats clos, et ce qui reste tient dehors.
+ *
+ * Renvoie la raison du rejet, ou null si l'événement est retenu.
+ */
+const MIN_DURATION_HOURS = 4;
+
+const INDOOR_FORMATS = [
+  // conférence
+  "conference", "colloque", "seminaire", "table ronde", "debat",
+  // lecture
+  "lecture", "rencontre litteraire", "dedicace",
+  // exposition
+  "exposition", "expo", "vernissage", "installation artistique",
+  // atelier
+  "atelier", "stage", "cours", "initiation", "formation", "masterclass",
+  "master class", "workshop",
+  // autres formats clairement en salle
+  "projection", "cinema", "seance",
+];
+
+function normalize(s: string): string {
+  return s
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase();
+}
+
+// Pluriel toléré (`atelier`/`ateliers`, `stage`/`stages`) via un `s?` final.
+const INDOOR_RE = new RegExp(
+  "\\b(" + INDOOR_FORMATS.map((t) => t.replace(/ /g, "\\s+")).join("|") + ")s?\\b",
+);
+
+export function classifyEvent(ev: EventRecord): string | null {
+  if (!ev.physical) return "en ligne";
+  if (ev.durationHours != null && ev.durationHours < MIN_DURATION_HOURS) {
+    return "moins d'une demi-journée";
+  }
+  const haystack = normalize([ev.title, ...ev.keywords].join(" "));
+  const m = haystack.match(INDOOR_RE);
+  if (m) return `format salle (${m[1]})`;
+  return null;
 }
 
 export class OpenAgendaProvider implements EvenementsProvider {

@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { OpenAgendaProvider } from "@/modules/prospection/providers/evenements";
+import { OpenAgendaProvider, classifyEvent } from "@/modules/prospection/providers/evenements";
 import { EntreprisesGouvProvider } from "@/modules/prospection/providers/entreprises";
 import { planScan } from "@/modules/prospection/scan/planner";
 import { bandsAbove } from "@/modules/prospection/geo/france";
@@ -191,7 +191,12 @@ async function stepEvents(
     });
     counters.found = page.results.length;
 
-    const candidates = page.results
+    // Tri des formats à l'ingestion : on n'insère que les événements publics,
+    // sur place, d'au moins une demi-journée, hors formats de salle.
+    const kept = page.results.filter((ev) => classifyEvent(ev) === null);
+    const rejected = page.results.length - kept.length;
+
+    const candidates = kept
       .map((ev) => {
         const year = (ev.startsOn ?? ev.endsOn ?? todayISO()).slice(0, 4);
         return { ev, key: `openagenda:${ev.sourceId}:${year}` };
@@ -237,7 +242,7 @@ async function stepEvents(
     await writeCursor(supabase, brandId, "openagenda", scopeKey, nextIndex, total);
     await logRun(supabase, brandId, "openagenda", started, counters, null);
     journal.push(
-      `événements ${brandId} : ${counters.created} nouveaux, ${counters.duplicates} doublons`,
+      `événements ${brandId} : ${counters.created} nouveaux, ${counters.duplicates} doublons, ${rejected} hors critères`,
     );
   } catch (e) {
     const msg = e instanceof Error ? e.message : "échec événements";
