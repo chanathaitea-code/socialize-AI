@@ -52,6 +52,7 @@ const FAMILLES: Famille[] = [
     liens: [
       { href: "/opportunites", label: "Opportunités", icone: "◎" },
       { href: "/territoire", label: "Territoire", icone: "◇" },
+      { href: "/veille", label: "Veille", icone: "◷" },
     ],
   },
   {
