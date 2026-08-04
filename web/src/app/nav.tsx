@@ -19,6 +19,7 @@ const TITRES: Record<string, string> = {
   "/reseaux": "Mes réseaux",
   "/opportunites": "Opportunités",
   "/territoire": "Territoire",
+  "/veille": "Veille",
   "/modules": "Modules et droits",
 };
 

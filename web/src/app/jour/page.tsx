@@ -9,6 +9,11 @@ import { basculerJourAuto, basculerRupture, publierStoryDuJour } from "./actions
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
+/** Date à N jours, isolée du rendu (le linter interdit Date.now() en rendu). */
+function dansNJours(n: number): string {
+  return new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10);
+}
+
 function aujourdhuiParis(): Date {
   const p = Object.fromEntries(
     new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Paris", year: "numeric", month: "2-digit", day: "2-digit" })
@@ -92,6 +97,20 @@ export default async function JourPage({
     url: supabase.storage.from("media").getPublicUrl(m.storage_path as string).data.publicUrl,
   }));
 
+  // Échéances de prospection : remontées ici parce qu'une date limite ratée
+  // coûte une année entière. Requête vide (donc carte masquée) pour qui n'a pas
+  // le module — les policies filtrent la table opportunities.
+  const horizonEcheances = dansNJours(15);
+  const { data: echeances } = await supabase
+    .from("opportunities")
+    .select("id, name, city, application_deadline")
+    .not("application_deadline", "is", null)
+    .gte("application_deadline", iso(jour))
+    .lte("application_deadline", horizonEcheances)
+    .not("status", "in", "(won,lost)")
+    .order("application_deadline", { ascending: true })
+    .limit(5);
+
   const { data: reglages } = await supabase
     .from("story_auto")
     .select("jour_enabled, jour_hour_paris")
@@ -118,6 +137,46 @@ export default async function JourPage({
 
         {err && <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">Problème : {err}</div>}
         {ok && <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">✓ {ok}</div>}
+
+        {(echeances ?? []).length > 0 && (
+          <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-5">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div className="font-bold text-[#12211c]">Échéances de prospection</div>
+              <Link href="/veille" className="text-xs font-semibold text-[#0f6b53] underline">
+                Voir la veille
+              </Link>
+            </div>
+            <p className="text-sm text-amber-900/80 mt-1">
+              Une date limite ratée coûte une année entière.
+            </p>
+            <ul className="mt-3 divide-y divide-amber-200/70">
+              {(echeances ?? []).map((o) => {
+                const j = Math.round(
+                  (new Date((o.application_deadline as string) + "T00:00:00Z").getTime() -
+                    jour.getTime()) /
+                    86_400_000,
+                );
+                return (
+                  <li key={o.id} className="py-2">
+                    <Link href={`/opportunites/${o.id}`} className="flex items-center gap-3">
+                      <span
+                        className={`w-14 shrink-0 rounded-full px-2 py-0.5 text-center text-xs font-bold ${
+                          j <= 3 ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-800"
+                        }`}
+                      >
+                        J-{j}
+                      </span>
+                      <span className="min-w-0 flex-1 text-sm font-semibold text-[#12211c] truncate">
+                        {o.name}
+                      </span>
+                      <span className="shrink-0 text-xs text-gray-500">{o.city}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
 
         <div className="mt-6 grid gap-3">
           {annulee ? (
