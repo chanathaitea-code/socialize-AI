@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { OpenAgendaProvider, classifyEvent } from "@/modules/prospection/providers/evenements";
 import { EntreprisesGouvProvider } from "@/modules/prospection/providers/entreprises";
+import { ServicePublicAnnuaire, type MairieContact } from "@/modules/prospection/providers/annuaire";
 import { planScan } from "@/modules/prospection/scan/planner";
 import { bandsAbove } from "@/modules/prospection/geo/france";
 import { computeScore, haversineKm } from "@/modules/prospection/scoring";
@@ -175,11 +176,14 @@ async function stepEvents(
   supabase: SupabaseClient,
   brandId: string,
   watched: string[],
+  deadlineMs: number,
   journal: string[],
 ) {
   const started = new Date().toISOString();
   const scopeKey = "watched";
   const provider = new OpenAgendaProvider();
+  const annuaire = new ServicePublicAnnuaire();
+  const mairieCache = new Map<string, MairieContact | null>();
   const counters: RunCounters = { cells_processed: 0, found: 0, created: 0, duplicates: 0 };
   try {
     const cursor = await readCursor(supabase, brandId, "openagenda", scopeKey);
@@ -209,35 +213,100 @@ async function stepEvents(
     const fresh = candidates.filter((c) => !already.has(c.key));
     counters.duplicates = candidates.length - fresh.length;
 
+    let enriched = 0;
+
     if (fresh.length > 0) {
-      const rows = fresh.map(({ ev, key }) => ({
-        brand_id: brandId,
-        family: "dated_event",
-        name: ev.title,
-        address: ev.address,
-        city: ev.city,
-        postal_code: ev.postalCode,
-        lat: ev.lat,
-        lng: ev.lng,
-        starts_on: ev.startsOn,
-        ends_on: ev.endsOn,
-        organizer: ev.organizer,
-        contact_name: ev.contactName,
-        contact_email: ev.contactEmail,
-        contact_phone: ev.contactPhone,
-        source_url: ev.sourceUrl,
-        // Durée inconnue : on retient mais on marque, pour que ces événements
-        // (souvent ceux des petites communes) restent identifiables en base.
-        notes:
-          (ev.durationHours == null ? "[duree_inconnue] " : "") +
-            (ev.description ? ev.description.slice(0, 500) : "") || null,
-        dedupe_key: key,
-      }));
-      const { error } = await supabase
+      // Enrichissement des contacts par l'annuaire des mairies, quand
+      // l'organisateur n'a pas laissé de coordonnées. Contact de la mairie,
+      // donc confiance « estimated » (tracée dans data_sources_log), jamais
+      // présenté comme le contact direct de l'organisateur.
+      async function mairieFor(insee: string | null): Promise<MairieContact | null> {
+        if (!insee) return null;
+        if (mairieCache.has(insee)) return mairieCache.get(insee)!;
+        let r: MairieContact | null = null;
+        try {
+          r = await annuaire.lookupByInsee(insee);
+        } catch {
+          r = null;
+        }
+        mairieCache.set(insee, r);
+        return r;
+      }
+
+      const prepared: Array<{
+        key: string;
+        row: Record<string, unknown>;
+        estimatedFields: string[];
+      }> = [];
+
+      for (const { ev, key } of fresh) {
+        let email = ev.contactEmail;
+        let phone = ev.contactPhone;
+        const estimatedFields: string[] = [];
+        if ((!email || !phone) && ev.insee && Date.now() < deadlineMs) {
+          const m = await mairieFor(ev.insee);
+          if (m) {
+            if (!email && m.email) { email = m.email; estimatedFields.push("contact_email"); }
+            if (!phone && m.phone) { phone = m.phone; estimatedFields.push("contact_phone"); }
+          }
+        }
+        if (estimatedFields.length) enriched++;
+        prepared.push({
+          key,
+          estimatedFields,
+          row: {
+            brand_id: brandId,
+            family: "dated_event",
+            name: ev.title,
+            address: ev.address,
+            city: ev.city,
+            postal_code: ev.postalCode,
+            lat: ev.lat,
+            lng: ev.lng,
+            starts_on: ev.startsOn,
+            ends_on: ev.endsOn,
+            organizer: ev.organizer,
+            contact_name: ev.contactName,
+            contact_email: email,
+            contact_phone: phone,
+            source_url: ev.sourceUrl,
+            // Durée inconnue : on retient mais on marque, pour que ces événements
+            // (souvent ceux des petites communes) restent identifiables en base.
+            notes:
+              (ev.durationHours == null ? "[duree_inconnue] " : "") +
+                (ev.description ? ev.description.slice(0, 500) : "") || null,
+            dedupe_key: key,
+          },
+        });
+      }
+
+      const { data: inserted, error } = await supabase
         .from("opportunities")
-        .upsert(rows, { onConflict: "brand_id,dedupe_key", ignoreDuplicates: true });
+        .upsert(prepared.map((p) => p.row), {
+          onConflict: "brand_id,dedupe_key",
+          ignoreDuplicates: true,
+        })
+        .select("id, dedupe_key");
       if (error) throw error;
-      counters.created = fresh.length;
+      counters.created = inserted?.length ?? 0;
+
+      // Traçabilité de la provenance des contacts enrichis.
+      const idByKey = new Map(
+        (inserted ?? []).map((r) => [r.dedupe_key as string, r.id as string]),
+      );
+      const logs = prepared.flatMap((p) => {
+        const id = idByKey.get(p.key);
+        if (!id) return [];
+        return p.estimatedFields.map((f) => ({
+          brand_id: brandId,
+          entity_type: "opportunity",
+          entity_id: id,
+          field_name: f,
+          source: annuaire.name,
+          confidence: "estimated",
+        }));
+      });
+      if (logs.length) await supabase.from("data_sources_log").insert(logs);
     }
 
     // Avance le curseur ; s'il n'y a plus rien, on repart à zéro demain.
@@ -248,7 +317,7 @@ async function stepEvents(
     await writeCursor(supabase, brandId, "openagenda", scopeKey, nextIndex, total);
     await logRun(supabase, brandId, "openagenda", started, counters, null);
     journal.push(
-      `événements ${brandId} : ${counters.created} nouveaux (dont ${unknownDuration} durée inconnue), ${counters.duplicates} doublons, ${rejected} hors critères`,
+      `événements ${brandId} : ${counters.created} nouveaux (dont ${unknownDuration} durée inconnue, ${enriched} enrichis mairie), ${counters.duplicates} doublons, ${rejected} hors critères`,
     );
   } catch (e) {
     const msg = e instanceof Error ? e.message : "échec événements";
@@ -451,7 +520,7 @@ export async function GET(req: NextRequest) {
 
     // Ordre de priorité : échéances, puis événements, puis entreprises.
     await stepDeadlines(supabase, brandId, alertDays, journal);
-    if (Date.now() <= deadlineMs) await stepEvents(supabase, brandId, watched, journal);
+    if (Date.now() <= deadlineMs) await stepEvents(supabase, brandId, watched, deadlineMs, journal);
     if (Date.now() <= deadlineMs)
       await stepCompanies(supabase, brandId, watched, minHeadcount, base, radiusKm, deadlineMs, journal);
   }

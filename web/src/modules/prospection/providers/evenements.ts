@@ -29,6 +29,8 @@ export interface EventRecord {
   postalCode: string | null;
   city: string | null;
   department: string | null;
+  /** Code INSEE de la commune, clé de rapprochement avec l'annuaire des mairies. */
+  insee: string | null;
   lat: number | null;
   lng: number | null;
   sourceUrl: string | null;
@@ -87,6 +89,7 @@ interface ApiRecord {
   location_postalcode?: string | null;
   location_city?: string | null;
   location_department?: string | null;
+  location_insee?: string | null;
   location_coordinates?: { lat?: number; lon?: number } | [number, number] | null;
   contributor_organization?: string | null;
   contributor_contactname?: string | null;
@@ -159,6 +162,7 @@ function mapRecord(r: ApiRecord): EventRecord | null {
     postalCode: r.location_postalcode ?? null,
     city: r.location_city ?? null,
     department: r.location_department ?? null,
+    insee: r.location_insee ?? null,
     lat,
     lng,
     sourceUrl: r.canonicalurl ?? null,
@@ -239,6 +243,9 @@ export class OpenAgendaProvider implements EvenementsProvider {
     const deptClause = codes
       .map((c) => `startswith(location_postalcode, "${c}")`)
       .join(" or ");
+    // Borne basse uniquement (fin >= aujourd'hui) : aucune limite haute, la
+    // veille couvre toute l'année à venir, pas seulement les trois prochains
+    // mois. Le curseur descend dans le futur au fil des passages.
     const where = `(${deptClause}) and lastdate_end >= "${query.fromDate}"`;
 
     const params = new URLSearchParams({
