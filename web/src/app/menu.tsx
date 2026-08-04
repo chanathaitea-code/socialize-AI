@@ -2,14 +2,24 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { AppModule } from "@/lib/modules";
 
 /**
- * Le menu latéral, repris de la maquette : quatre familles, du pilotage à la
+ * Le menu latéral, repris de la maquette : familles du pilotage à la
  * configuration, pour qu'on sache toujours où on est.
+ *
+ * Chaque famille appartient à un module. Un membre qui n'a que la communication
+ * ne voit jamais les écrans de prospection, et réciproquement. Ce filtrage est
+ * du confort : la vraie barrière est en base, dans les policies. Ne pas s'y fier
+ * pour la sécurité.
  */
-const FAMILLES: { titre: string; liens: { href: string; label: string; icone: string }[] }[] = [
+type Lien = { href: string; label: string; icone: string };
+type Famille = { titre: string; module: AppModule | "core"; liens: Lien[] };
+
+const FAMILLES: Famille[] = [
   {
     titre: "Pilotage",
+    module: "core",
     liens: [
       { href: "/tableau", label: "Tableau de bord", icone: "▦" },
       { href: "/jour", label: "Aujourd’hui", icone: "☀" },
@@ -19,6 +29,7 @@ const FAMILLES: { titre: string; liens: { href: string; label: string; icone: st
   },
   {
     titre: "Contenus",
+    module: "communication",
     liens: [
       { href: "/studio", label: "Studio de création", icone: "✦" },
       { href: "/stories", label: "Stories", icone: "❑" },
@@ -28,6 +39,7 @@ const FAMILLES: { titre: string; liens: { href: string; label: string; icone: st
   },
   {
     titre: "Mesure",
+    module: "communication",
     liens: [
       { href: "/journal", label: "Journal", icone: "≡" },
       { href: "/analyse", label: "Analyse", icone: "◔" },
@@ -35,16 +47,41 @@ const FAMILLES: { titre: string; liens: { href: string; label: string; icone: st
     ],
   },
   {
+    titre: "Prospection",
+    module: "prospection",
+    liens: [
+      { href: "/opportunites", label: "Opportunités", icone: "◎" },
+      { href: "/territoire", label: "Territoire", icone: "◇" },
+    ],
+  },
+  {
     titre: "Configuration",
+    module: "core",
     liens: [
       { href: "/marque", label: "Ma marque", icone: "◇" },
       { href: "/reseaux", label: "Mes réseaux", icone: "⚭" },
+      { href: "/modules", label: "Modules et droits", icone: "⚙" },
     ],
   },
 ];
 
-export default function Menu({ marque, activite }: { marque: string; activite: string }) {
+function visibleFamilles(modules: AppModule[]): Famille[] {
+  return FAMILLES.filter(
+    (f) => f.module === "core" || modules.includes(f.module),
+  );
+}
+
+export default function Menu({
+  marque,
+  activite,
+  modules,
+}: {
+  marque: string;
+  activite: string;
+  modules: AppModule[];
+}) {
   const chemin = usePathname();
+  const familles = visibleFamilles(modules);
 
   return (
     <aside className="hidden md:flex md:flex-col w-[230px] shrink-0 bg-[#0b1512] text-white min-h-screen sticky top-0">
@@ -61,7 +98,7 @@ export default function Menu({ marque, activite }: { marque: string; activite: s
       </div>
 
       <nav className="flex-1 overflow-y-auto pb-6">
-        {FAMILLES.map((f) => (
+        {familles.map((f) => (
           <div key={f.titre} className="mb-4">
             <div className="px-5 text-[10px] font-bold uppercase tracking-[0.12em] text-white/30 mb-1.5">
               {f.titre}
@@ -89,9 +126,9 @@ export default function Menu({ marque, activite }: { marque: string; activite: s
 }
 
 /** Sur téléphone, le menu latéral disparaît : on garde une barre de liens. */
-export function MenuMobile() {
+export function MenuMobile({ modules }: { modules: AppModule[] }) {
   const chemin = usePathname();
-  const tous = FAMILLES.flatMap((f) => f.liens);
+  const tous = visibleFamilles(modules).flatMap((f) => f.liens);
   return (
     <nav className="md:hidden bg-[#0b1512] text-white px-3 py-2 flex gap-1 overflow-x-auto">
       {tous.map((l) => (
