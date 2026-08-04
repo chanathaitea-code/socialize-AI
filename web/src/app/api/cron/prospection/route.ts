@@ -27,7 +27,9 @@ export const maxDuration = 60;
 /** Marge sous maxDuration : on sort proprement avant d'être coupé. */
 const TIME_BUDGET_MS = 45_000;
 /** Bornes par passage, pour rester lent mais jamais illimité. */
-const EVENT_FETCH = 50;
+// Plafond de l'API opendatasoft (100/requête). Un fetch répond en ~200 ms :
+// le vrai garde-fou est le budget de temps, pas ce nombre.
+const EVENT_FETCH = 100;
 const COMPANY_CELLS_PER_RUN = 4;
 const COMPANY_PAGES_PER_CELL = 2;
 const COMPANY_PER_PAGE = 25;
@@ -178,7 +180,7 @@ async function stepEvents(
   watched: string[],
   deadlineMs: number,
   journal: string[],
-) {
+): Promise<{ wrapped: boolean }> {
   const started = new Date().toISOString();
   const scopeKey = "watched";
   const provider = new OpenAgendaProvider();
@@ -329,10 +331,13 @@ async function stepEvents(
     journal.push(
       `événements ${brandId} : ${counters.created} nouveaux (dont ${unknownDuration} durée inconnue, ${enriched} enrichis mairie), ${counters.duplicates} doublons, ${rejected} hors critères`,
     );
+    return { wrapped: nextIndex === 0 };
   } catch (e) {
     const msg = e instanceof Error ? e.message : "échec événements";
     await logRun(supabase, brandId, "openagenda", started, counters, msg);
     journal.push(`événements ${brandId} : ${msg}`);
+    // En cas d'erreur, on arrête la boucle de backfill plutôt que de tourner à vide.
+    return { wrapped: true };
   }
 }
 
@@ -482,6 +487,13 @@ export async function GET(req: NextRequest) {
   const journal: string[] = [];
   const deadlineMs = Date.now() + TIME_BUDGET_MS;
 
+  // ?task=backfill : récupération initiale. On enchaîne les passages
+  // d'événements dans le budget de 45 s, en avançant le curseur, jusqu'à ce
+  // qu'il boucle. L'appelant relance tant que "done" est faux.
+  const task = new URL(req.url).searchParams.get("task");
+  const backfill = task === "backfill";
+  let allWrapped = true;
+
   // Marques dont l'organisation a le module prospection actif.
   const { data: orgRows } = await supabase
     .from("organization_modules")
@@ -499,6 +511,7 @@ export async function GET(req: NextRequest) {
   for (const b of brands ?? []) {
     if (Date.now() > deadlineMs) {
       journal.push("budget de temps atteint, reprise demain");
+      if (backfill) allWrapped = false; // marques restantes non traitées
       break;
     }
     const brandId = b.id as string;
@@ -528,6 +541,26 @@ export async function GET(req: NextRequest) {
         ? { lat: settings.base_lat as number, lng: settings.base_lng as number }
         : null;
 
+    if (backfill) {
+      // Récupération initiale : on n'enchaîne que les événements, jusqu'au
+      // bouclage du curseur ou l'épuisement du budget de temps.
+      let passes = 0;
+      let wrapped = false;
+      while (Date.now() < deadlineMs) {
+        const res = await stepEvents(supabase, brandId, watched, deadlineMs, journal);
+        passes++;
+        if (res.wrapped) {
+          wrapped = true;
+          break;
+        }
+      }
+      if (!wrapped) allWrapped = false;
+      journal.push(
+        `backfill ${brandId} : ${passes} passage(s), ${wrapped ? "terminé (curseur bouclé)" : "à poursuivre"}`,
+      );
+      continue;
+    }
+
     // Ordre de priorité : échéances, puis événements, puis entreprises.
     await stepDeadlines(supabase, brandId, alertDays, journal);
     if (Date.now() <= deadlineMs) await stepEvents(supabase, brandId, watched, deadlineMs, journal);
@@ -535,5 +568,8 @@ export async function GET(req: NextRequest) {
       await stepCompanies(supabase, brandId, watched, minHeadcount, base, radiusKm, deadlineMs, journal);
   }
 
+  if (backfill) {
+    return NextResponse.json({ ok: true, mode: "backfill", done: allWrapped, actions: journal });
+  }
   return NextResponse.json({ ok: true, actions: journal });
 }
