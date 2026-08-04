@@ -159,6 +159,13 @@ export default function OpportunitesClient({
             </button>
           </div>
 
+          <p className="mt-2 text-[11px] text-gray-400">
+            L&apos;export ne contient pas les numéros d&apos;entreprise : ils sont
+            cherchés à la demande via Google et affichés le temps de la session,
+            sans être conservés ni exportés (conditions d&apos;utilisation de
+            Google Places).
+          </p>
+
           {showWeights && (
             <div className="mt-4 rounded-xl border border-gray-200 bg-white p-5">
               <div className="flex items-baseline justify-between">
