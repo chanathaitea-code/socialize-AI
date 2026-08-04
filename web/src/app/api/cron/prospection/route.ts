@@ -220,16 +220,25 @@ async function stepEvents(
       // l'organisateur n'a pas laissé de coordonnées. Contact de la mairie,
       // donc confiance « estimated » (tracée dans data_sources_log), jamais
       // présenté comme le contact direct de l'organisateur.
-      async function mairieFor(insee: string | null): Promise<MairieContact | null> {
-        if (!insee) return null;
-        if (mairieCache.has(insee)) return mairieCache.get(insee)!;
+      // INSEE d'abord ; repli sur commune + code postal quand il manque (≈10 %
+      // des événements, souvent les petites communes, les plus intéressantes).
+      async function mairieFor(ev: {
+        insee: string | null;
+        city: string | null;
+        postalCode: string | null;
+      }): Promise<MairieContact | null> {
+        const key = ev.insee || (ev.postalCode ? `cp:${ev.postalCode}:${ev.city ?? ""}` : null);
+        if (!key) return null;
+        if (mairieCache.has(key)) return mairieCache.get(key)!;
         let r: MairieContact | null = null;
         try {
-          r = await annuaire.lookupByInsee(insee);
+          r = ev.insee
+            ? await annuaire.lookupByInsee(ev.insee)
+            : await annuaire.lookupByCommune(ev.city, ev.postalCode);
         } catch {
           r = null;
         }
-        mairieCache.set(insee, r);
+        mairieCache.set(key, r);
         return r;
       }
 
@@ -243,8 +252,9 @@ async function stepEvents(
         let email = ev.contactEmail;
         let phone = ev.contactPhone;
         const estimatedFields: string[] = [];
-        if ((!email || !phone) && ev.insee && Date.now() < deadlineMs) {
-          const m = await mairieFor(ev.insee);
+        const canLookup = ev.insee || ev.postalCode;
+        if ((!email || !phone) && canLookup && Date.now() < deadlineMs) {
+          const m = await mairieFor({ insee: ev.insee, city: ev.city, postalCode: ev.postalCode });
           if (m) {
             if (!email && m.email) { email = m.email; estimatedFields.push("contact_email"); }
             if (!phone && m.phone) { phone = m.phone; estimatedFields.push("contact_phone"); }

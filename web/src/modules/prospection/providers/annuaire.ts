@@ -20,10 +20,26 @@ export interface MairieContact {
 export interface AnnuaireProvider {
   readonly name: string;
   lookupByInsee(insee: string): Promise<MairieContact | null>;
+  /** Repli quand le code INSEE manque : commune + code postal. */
+  lookupByCommune(
+    city: string | null,
+    postalCode: string | null,
+  ): Promise<MairieContact | null>;
 }
 
 const BASE_URL =
   "https://api-lannuaire.service-public.fr/api/explore/v2.1/catalog/datasets/api-lannuaire-administration/records";
+/** API Géo (DINUM), publique et sans clé : code postal + commune → code INSEE. */
+const GEO_URL = "https://geo.api.gouv.fr/communes";
+
+function normalizeName(s: string): string {
+  return s
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
 
 const MIN_INTERVAL_MS = 200;
 let lastCall = 0;
@@ -91,5 +107,38 @@ export class ServicePublicAnnuaire implements AnnuaireProvider {
     const phone = firstPhone(mairie.telephone);
     if (!email && !phone) return null;
     return { email, phone };
+  }
+
+  /**
+   * Résout le code INSEE depuis un code postal et un nom de commune. Un code
+   * postal couvre souvent plusieurs communes : on lève l'ambiguïté par le nom.
+   */
+  private async resolveInsee(
+    city: string | null,
+    postalCode: string | null,
+  ): Promise<string | null> {
+    const cp = (postalCode ?? "").trim();
+    if (!/^\d{5}$/.test(cp)) return null;
+    await throttle();
+    const res = await fetch(`${GEO_URL}?codePostal=${cp}&fields=code,nom`, {
+      headers: { accept: "application/json" },
+      next: { revalidate: 60 * 60 * 24 * 30 },
+    });
+    if (!res.ok) return null;
+    const communes = (await res.json()) as Array<{ code?: string; nom?: string }>;
+    if (communes.length === 0) return null;
+    if (communes.length === 1) return communes[0].code ?? null;
+    const target = normalizeName(city ?? "");
+    const match = communes.find((c) => normalizeName(c.nom ?? "") === target);
+    return match?.code ?? null;
+  }
+
+  async lookupByCommune(
+    city: string | null,
+    postalCode: string | null,
+  ): Promise<MairieContact | null> {
+    const insee = await this.resolveInsee(city, postalCode);
+    if (!insee) return null;
+    return this.lookupByInsee(insee);
   }
 }
