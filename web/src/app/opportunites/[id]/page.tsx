@@ -11,6 +11,8 @@ import {
 } from "@/modules/prospection/scoring";
 import { ScoreBand } from "@/modules/prospection/score-band";
 import Nav from "../../nav";
+import TelephoneBouton from "./telephone-bouton";
+import NomResponsable from "./nom-responsable";
 
 export const dynamic = "force-dynamic";
 
@@ -148,6 +150,21 @@ export default async function OpportuniteDetail({
           </div>
         )}
 
+        {!isEvent && (
+          <div className="mt-5 rounded-xl border border-gray-200 bg-white p-5">
+            <p className="text-sm font-semibold text-[#12211c]">Prise de contact</p>
+            <NomResponsable opportunityId={o.id} initial={o.contactName} />
+            <div className="mt-3">
+              <TelephoneBouton opportunityId={o.id} />
+            </div>
+            <p className="mt-3 text-[11px] text-gray-400">
+              Le numéro est cherché à la demande via Google et affiché le temps de
+              la session. Il n&apos;est ni enregistré en base ni inclus dans
+              l&apos;export (conditions d&apos;utilisation de Google Places).
+            </p>
+          </div>
+        )}
+
         {(o.organizer || o.contactEmail || o.contactPhone || o.sourceUrl) && (
           <div className="mt-4 rounded-xl border border-gray-200 bg-white p-5">
             <p className="text-sm font-semibold text-[#12211c]">Contact</p>
@@ -194,6 +211,7 @@ export default async function OpportuniteDetail({
                 </a>
               </p>
             )}
+            <NomResponsable opportunityId={o.id} initial={o.contactName} />
           </div>
         )}
 
